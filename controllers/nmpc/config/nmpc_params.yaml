@@ -1,0 +1,14 @@
+## Nonlinear Model Predictive Control Params
+
+# Optimization Setup
+dt: 0.1
+N:  10
+
+# Weight Matrices
+Q_x:      1.0
+Q_y:      1.0
+Q_theta:  1.0 
+
+R_v:      1.0
+R_omega:  1.0
+
