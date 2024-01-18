@@ -1,14 +1,14 @@
 ## Nonlinear Model Predictive Control Params
-
+controller/NMPC: 
 # Optimization Setup
-dt: 0.1
-N:  10
+  dt: 0.1
+  N:  10
 
-# Weight Matrices
-Q_x:      1.0
-Q_y:      1.0
-Q_theta:  1.0 
+  # Weight Matrices
+  Q_x:      7.5
+  Q_y:      7.5
+  Q_theta:  1.0 
 
-R_v:      1.0
-R_omega:  1.0
+  R_v:      0.75
+  R_omega:  0.1
 

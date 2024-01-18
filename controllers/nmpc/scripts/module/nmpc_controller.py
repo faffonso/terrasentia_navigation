@@ -3,6 +3,14 @@
 import casadi as ca
 import numpy as np
 
+import rospy
+import time
+
+from nav_msgs.msg import Odometry, Path
+from geometry_msgs.msg import TwistStamped, PoseStamped
+
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
+
 class NMPC:
     def __init__(self, dt=0.1, N=10, Q_x=1.0, Q_y=1.0, Q_theta=1.0, R_v=1.0, R_omega=1.0):
         self.dt = dt
@@ -10,6 +18,17 @@ class NMPC:
 
         self.Q = np.diag([Q_x, Q_y, Q_theta])
         self.R = np.diag([R_v, R_omega])
+
+        # Publishers and Subscribers
+        self.odom_subscriber = rospy.Subscriber("/terrasentia/will/odom", Odometry, self.odom_callback)
+        self.goal_subscriber = rospy.Subscriber("/terrasentia/goal", PoseStamped, self.goal_callback)
+
+        self.path_publisher     = rospy.Publisher("/terrasentia/path", Path, queue_size=1)
+        self.cmd_vel_publisher  = rospy.Publisher("/terrasentia/cmd_vel", TwistStamped, queue_size=10)
+
+        self.odom    = Odometry()
+        self.goal    = PoseStamped()
+        self.cmd_vel = TwistStamped()
 
         # Optimization struct
         opti = ca.Opti()
@@ -57,8 +76,8 @@ class NMPC:
         opti.minimize(obj)
 
         # Boundrary and control conditions
-        v_max       = 4.0
-        omega_max   = 1.5
+        v_max       = 1.0
+        omega_max   = 1.0
 
         opti.subject_to(opti.bounded(0, v, v_max))
         opti.subject_to(opti.bounded(-omega_max, omega, omega_max))
@@ -75,6 +94,67 @@ class NMPC:
 
         self.opti = opti
         print(f'Optimization problem {self.opti}')
+
+    def run(self):
+        start_time = time.time()
+
+        x0 = self.state_from_pose(self.odom.pose.pose)
+        xref = self.state_from_pose(self.goal.pose)
+
+        u0 = np.zeros((self.N,2))
+        xs = np.tile(x0, (self.N+1, 1))
+
+        x, u = self.fit(xs, xref, x0, u0)
+
+        path_msg = Path()
+        path_msg.header.stamp = rospy.Time.now()
+        path_msg.header.frame_id = "/terrasentia/will/odom"
+        for xi in x:
+            pose = self.pose_from_state(xi)
+            path_msg.poses.append(pose)
+
+        self.cmd_vel.twist.linear.x = u[0][0]
+        self.cmd_vel.twist.angular.z = u[0][1]
+
+        self.path_publisher.publish(path_msg)
+        self.cmd_vel_publisher.publish(self.cmd_vel)
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f'NMPC Run | State {x0} | Reference {xref} | Action control {u[0]} | Time {elapsed_time:.3f} seconds')
+        
+    def state_from_pose(self, pose):
+        position      = pose.position
+        orientation_q = pose.orientation
+        orientation = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+
+        x_0 = position.x
+        y_0 = position.y
+        _, _, theta_0 = euler_from_quaternion(orientation)
+
+        return np.array([x_0, y_0, theta_0])
+
+    def pose_from_state(self, x):
+        pose_msg = PoseStamped()
+        pose_msg.header.stamp = rospy.Time.now()
+        pose_msg.header.frame_id = "/terrasentia/will/odom"
+   
+        pose_msg.pose.position.x = x[0]
+        pose_msg.pose.position.y = x[1] 
+
+        orientation = quaternion_from_euler(0.0, 0.0, x[2])
+        pose_msg.pose.orientation.x = orientation[0]
+        pose_msg.pose.orientation.y = orientation[1]
+        pose_msg.pose.orientation.z = orientation[2]
+        pose_msg.pose.orientation.w = orientation[3]
+
+        return pose_msg
+
+    def odom_callback(self, msg):
+        self.odom = msg
+
+    def goal_callback(self, msg):
+        self.goal = msg
 
     def fit(self, xs, xref, x0, u0):
         self.opti.set_value(self.opt_xref, xref)
@@ -98,4 +178,4 @@ class NMPC:
     
     def l(self, x, u = 0):
         running_cost = x.T  @ self.Q @ x + u.T @ self.R @ u
-        return running_cost
+        return running_cost 
