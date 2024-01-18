@@ -1,7 +1,7 @@
 ## Nonlinear Model Predictive Control Params
 controller/NMPC: 
 # Optimization Setup
-  dt: 0.1
+  dt: 0.1 #s
   N:  10
 
   # Weight Matrices
@@ -11,4 +11,8 @@ controller/NMPC:
 
   R_v:      0.75
   R_omega:  0.1
+
+  # Boundary Action Control
+  v_max:      1.0 # m/s
+  omega_max:  1.0 # rad/s
 

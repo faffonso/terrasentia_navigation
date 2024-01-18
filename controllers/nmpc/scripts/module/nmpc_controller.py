@@ -12,7 +12,7 @@ from geometry_msgs.msg import TwistStamped, PoseStamped
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class NMPC:
-    def __init__(self, dt=0.1, N=10, Q_x=1.0, Q_y=1.0, Q_theta=1.0, R_v=1.0, R_omega=1.0):
+    def __init__(self, dt=0.1, N=10, Q_x=1.0, Q_y=1.0, Q_theta=1.0, R_v=1.0, R_omega=1.0, v_max=1.0, omega_max=1.0):
         self.dt = dt
         self.N  = N
 
@@ -76,8 +76,8 @@ class NMPC:
         opti.minimize(obj)
 
         # Boundrary and control conditions
-        v_max       = 1.0
-        omega_max   = 1.0
+        self.v_max       = v_max
+        self.omega_max   = omega_max
 
         opti.subject_to(opti.bounded(0, v, v_max))
         opti.subject_to(opti.bounded(-omega_max, omega, omega_max))
