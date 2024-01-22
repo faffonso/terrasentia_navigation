@@ -20,7 +20,8 @@ class NMPC:
         self.R = np.diag([R_v, R_omega])
 
         # Publishers and Subscribers
-        self.odom_subscriber = rospy.Subscriber("/terrasentia/will/odom", Odometry, self.odom_callback)
+        self.odom_topic = rospy.get_param("odom/frame_id")
+        self.odom_subscriber = rospy.Subscriber(self.odom_topic, Odometry, self.odom_callback)
         self.goal_subscriber = rospy.Subscriber("/terrasentia/goal", PoseStamped, self.goal_callback)
 
         self.path_publisher     = rospy.Publisher("/terrasentia/path", Path, queue_size=1)
@@ -108,7 +109,7 @@ class NMPC:
 
         path_msg = Path()
         path_msg.header.stamp = rospy.Time.now()
-        path_msg.header.frame_id = "/terrasentia/will/odom"
+        path_msg.header.frame_id = self.odom_topic
         for xi in x:
             pose = self.pose_from_state(xi)
             path_msg.poses.append(pose)
@@ -137,7 +138,7 @@ class NMPC:
     def pose_from_state(self, x):
         pose_msg = PoseStamped()
         pose_msg.header.stamp = rospy.Time.now()
-        pose_msg.header.frame_id = "/terrasentia/will/odom"
+        pose_msg.header.frame_id = self.odom_topic
    
         pose_msg.pose.position.x = x[0]
         pose_msg.pose.position.y = x[1] 

@@ -2,17 +2,20 @@
 controller/NMPC: 
 # Optimization Setup
   dt: 0.1 #s
-  N:  10
+  N:  15
 
   # Weight Matrices
-  Q_x:      7.5
-  Q_y:      7.5
-  Q_theta:  1.0 
+  Q_x:      5.0
+  Q_y:      5.0
+  Q_theta:  3.5 
 
-  R_v:      0.75
+  R_v:      0.5
   R_omega:  0.1
 
   # Boundary Action Control
-  v_max:      1.0 # m/s
-  omega_max:  1.0 # rad/s
+  v_max:      1.2 # m/s
+  omega_max:  2.0 # rad/s
 
+## Odometry Params
+odom:
+  frame_id: "/terrasentia/will/odom"
