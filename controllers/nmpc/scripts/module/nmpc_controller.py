@@ -24,7 +24,7 @@ class NMPC:
         self.odom_subscriber = rospy.Subscriber(self.odom_topic, Odometry, self.odom_callback)
         self.goal_subscriber = rospy.Subscriber("/terrasentia/goal", PoseStamped, self.goal_callback)
 
-        self.path_publisher     = rospy.Publisher("/terrasentia/path", Path, queue_size=1)
+        self.path_publisher     = rospy.Publisher("/terrasentia/path2", Path, queue_size=1)
         self.cmd_vel_publisher  = rospy.Publisher("/terrasentia/cmd_vel", TwistStamped, queue_size=10)
 
         self.odom    = Odometry()
@@ -118,7 +118,7 @@ class NMPC:
         self.cmd_vel.twist.angular.z = u[0][1]
 
         self.path_publisher.publish(path_msg)
-        self.cmd_vel_publisher.publish(self.cmd_vel)
+        #self.cmd_vel_publisher.publish(self.cmd_vel)
 
         end_time = time.time()
         elapsed_time = end_time - start_time
