@@ -2,10 +2,8 @@
 #include <ros/console.h>
 #include <iostream>
 
-#include <string>
-#include <casadi/casadi.hpp>
-
-using namespace casadi;
+#include "ilqr/dynamics.h"
+#include "ilqr/cost.h"
 
 int main(int argc, char** argv) 
 {
@@ -14,42 +12,47 @@ int main(int argc, char** argv)
 
     ros::Rate rate(1);
 
-    SX x = SX::sym("x", 3);
-    std::cout << "State: " << x << std::endl;
+    float dt;
+    std::string model;
 
-    SX u = SX::sym("u", 2);
-    std::cout << "Action control: " << u << std::endl;
-    
+    if(!nh.getParam("/controller/dynamics/dt", dt))
+    {
+        ROS_ERROR_STREAM("Sampling time (dt) could not be read.");
+        return 0;
+    }
+    if(!nh.getParam("/controller/dynamics/model", model))
+    {
+        ROS_ERROR_STREAM("Dyamic model (model) could not be read.");
+        return 0;
+    }
 
-    SX x1_dot = u(0) + x(2);
-    SX x2_dot = u(0) + x(2);
-    SX x3_dot = u(1);
+    ROS_INFO_STREAM("Creating Dynamic Model using dt: " << dt << ", model: " << model);
 
-    SX x_dot = vertcat(x1_dot, x2_dot, x3_dot);
+    Dynamics dynamic(dt, model);
 
-    std::cout << "State Space " << x_dot << std::endl;
+    Cost cost(5, 
+            1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0,
+            1.0, 1.0);
 
-    Function f = Function("f", {x, u}, {x_dot});
 
     // input
     std::vector<double> x_v(3, 0);
-    x_v[0] = 10.0;
-    x_v[1] = 5.0;
-    x_v[2] = 5.0;
+    x_v[0] = 0.0;
+    x_v[1] = 0.0;
+    x_v[2] = 3.14/2;
 
     std::vector<double> u_v(2, 0);
-    u_v[0] = 5.0;
-    u_v[1] = 3.0;
-
-    std::cout << "Result of x: " << x_v << std::endl;
-    std::cout << "Result of u: " << u_v << std::endl;
+    u_v[0] = 1.0;
+    u_v[1] = 0.2;
 
     // Evaluate the function
     std::vector<casadi::DM> input = {DM(x_v), DM(u_v)};
-    std::vector<casadi::DM> result = f(input);
 
-    // Print the result
-    std::cout << "Result of f: " << result << std::endl;
+    // // Print the result
+    // std::cout << "Result of f: " << dynamic.get_f(input) << std::endl;
+    // std::cout << "Result of fx: " << dynamic.get_f_x(input) << std::endl;
+    // std::cout << "Result of fu: " << dynamic.get_f_u(input) << std::endl;
 
      
     while (ros::ok()) {
