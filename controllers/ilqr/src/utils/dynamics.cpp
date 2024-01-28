@@ -53,10 +53,10 @@ std::vector<DM> Dynamics::get_f(std::vector<DM> input) {
     return _f(input);
 }
 
-std::vector<DM> Dynamics::get_f_x(std::vector<DM> input) {
-    return _f_x(input);
-}
+f_prime_t Dynamics::get_f_prime(std::vector<DM> input)
+{
+    _f_prime.f_x = _f_x(input);
+    _f_prime.f_u = _f_u(input);
 
-std::vector<DM> Dynamics::get_f_u(std::vector<DM> input) {
-    return _f_u(input);
+    return _f_prime;
 }

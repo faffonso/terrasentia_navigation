@@ -15,14 +15,9 @@ Cost::Cost(int N,
     _Q = casadi::DM::diag(Q_values);
     _R = casadi::DM::diag(R_values);
 
-    ROS_INFO_STREAM("Qf: " << _Qf);
-    ROS_INFO_STREAM("Q: " << _Q);
-    ROS_INFO_STREAM("R: " << _R);
-
     // State space
     SX x = SX::sym("x", 3);
     SX u = SX::sym("u", 2);
-
 
     SX l = 0.5 * (mtimes(x.T(), mtimes(_Q, x)) + mtimes(u.T(), mtimes(_R, u)));
     SX lf = 0.5 * (mtimes(x.T(), mtimes(_Qf, x)));
@@ -34,31 +29,60 @@ Cost::Cost(int N,
     SX l_uu = jacobian(l_u, u);
 
     _l = Function("l", {x, u}, {l});
-    _lf = Function("lf", {x, u}, {lf});
+    _lf = Function("lf", {x}, {lf});
     _l_x = Function("l_x", {x, u}, {l_x});
     _l_u = Function("l_u", {x, u}, {l_u});
     _l_xx = Function("l_xx", {x, u}, {l_xx});
     _l_uu = Function("l_uu", {x, u}, {l_uu});
+}
 
-    // input
-    std::vector<double> x_v(3, 0);
-    x_v[0] = 0.0;
-    x_v[1] = 0.0;
-    x_v[2] = 3.14/2;
+double Cost::trajectory_cost(std::vector<std::vector<double>> x, std::vector<std::vector<double>> u)
+{
+    std::size_t Nx = x.size();
+    std::size_t Nu = u.size();
 
-    std::vector<double> u_v(2, 0);
-    u_v[0] = 1.0;
-    u_v[1] = 0.2;
+    if (Nu != _N)
+    {
+        ROS_ERROR_STREAM("Prediction Size (N) is diferente of action control size (Nu) - (" << _N << "!=" << Nu << ").");
+        return -1;
+    }
 
-    // Evaluate the function
-    std::vector<casadi::DM> input = {DM(x_v), DM(u_v)};
-
-    ROS_INFO_STREAM("t1: " << _l(input));
-    ROS_INFO_STREAM("t2: " << _lf(input));
-    ROS_INFO_STREAM("t3: " << _l_x(input));
-    ROS_INFO_STREAM("t4: " << _l_u(input));
-    ROS_INFO_STREAM("t1: " << _l_xx(input));
-    ROS_INFO_STREAM("t1: " << _l_uu(input));
+    if (Nu != (Nx -1))
+    {
+        ROS_ERROR_STREAM("State size (Nx) or Action size (Nu) have wrong size - (Nx=" << Nx << "and Nu=" << Nu << ").");
+        return -1;
+    }
 
 
+    double J = 0;
+    std::vector<DM> input;
+
+    for (int i=0; i<_N; i++)
+    {
+        input = {DM(x[i]), DM(u[i])};
+        J += static_cast<double>(_l(input).at(0));
+    }
+    
+    input = {DM(x[_N])};
+    J += static_cast<double>(_lf(input).at(0));
+
+    ROS_INFO_STREAM("Total Cost= "<< J);
+
+    return J;
+}
+
+l_prime_t  Cost::get_l_prime(std::vector<DM> input)
+{
+    _l_prime.l_x = _l_x(input);
+    _l_prime.l_u = _l_u(input);
+    
+    _l_prime.l_xx = _l_xx(input);
+    _l_prime.l_uu = _l_uu(input);
+
+    return _l_prime;
+}
+
+SX Cost::get_Qf()
+{
+    return _Qf;
 }

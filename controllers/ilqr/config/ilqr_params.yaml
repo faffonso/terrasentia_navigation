@@ -1,7 +1,7 @@
 ## iterative Linear Quatratic Regulator
 
 controller/iLQR:
-  N:    &N  15
+  N:    &N  10
   dt:   &dt 0.1
   v_max: 1.2
   omega_max: 2.0

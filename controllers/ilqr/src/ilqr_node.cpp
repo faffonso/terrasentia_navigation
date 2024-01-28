@@ -4,6 +4,7 @@
 
 #include "ilqr/dynamics.h"
 #include "ilqr/cost.h"
+#include "ilqr/ilqr.h"
 
 int main(int argc, char** argv) 
 {
@@ -30,30 +31,66 @@ int main(int argc, char** argv)
 
     Dynamics dynamic(dt, model);
 
-    Cost cost(5, 
-            1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0,
-            1.0, 1.0);
 
+    int N;
+    float Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega;
 
-    // input
-    std::vector<double> x_v(3, 0);
-    x_v[0] = 0.0;
-    x_v[1] = 0.0;
-    x_v[2] = 3.14/2;
+    if(!nh.getParam("/controller/cost/N", N))
+    {
+        ROS_ERROR_STREAM("Prediction Horizon (N) could not be read.");
+        return 0;
+    }
+    if(!nh.getParam("/controller/cost/Qf_x", Qf_x))
+    {
+        ROS_ERROR_STREAM("Final state x cost (Qf_x) could not be read.");
+        return 0;
+    }
+    if(!nh.getParam("/controller/cost/Qf_y", Qf_y))
+    {
+        ROS_ERROR_STREAM("Final state y cost (Qf_y) could not be read.");
+        return 0;
+    }
+    if(!nh.getParam("/controller/cost/Qf_theta", Qf_theta))
+    {
+        ROS_ERROR_STREAM("Final state theta cost (Qf_theta) could not be read.");
+        return 0;
+    }
+    if(!nh.getParam("/controller/cost/Q_x", Q_x))
+    {
+        ROS_ERROR_STREAM("State x cost (Q_x) could not be read.");
+        return 0;
+    }
+    if(!nh.getParam("/controller/cost/Q_y", Q_y))
+    {
+        ROS_ERROR_STREAM("State y cost (Q_y) could not be read.");
+        return 0;
+    }
+    if(!nh.getParam("/controller/cost/Q_theta", Q_theta))
+    {
+        ROS_ERROR_STREAM("State theta cost (Q_theta) could not be read.");
+        return 0;
+    }
+    if(!nh.getParam("/controller/cost/R_v", R_v))
+    {
+        ROS_ERROR_STREAM("Linear velocity cost (R_v) could not be read.");
+        return 0;
+    }
+    if(!nh.getParam("/controller/cost/R_omega", R_omega))
+    {
+        ROS_ERROR_STREAM("Angular velocity cost (R_omega) could not be read.");
+        return 0;
+    }
 
-    std::vector<double> u_v(2, 0);
-    u_v[0] = 1.0;
-    u_v[1] = 0.2;
+    ROS_INFO_STREAM("Creating Dynamic Model using N: " << N << ", final state cost: " << Q_x  << " " << Q_y <<  " "  << Q_theta << ", state cost: " << Q_x << " " << Q_y << " " << Q_theta << ", action control cost: " << R_v << " " << R_omega);
 
-    // Evaluate the function
-    std::vector<casadi::DM> input = {DM(x_v), DM(u_v)};
+    Cost cost(N, 
+            Qf_x, Qf_y, Qf_theta,
+            Q_x, Q_y, Q_theta,
+            R_v, R_omega);
 
-    // // Print the result
-    // std::cout << "Result of f: " << dynamic.get_f(input) << std::endl;
-    // std::cout << "Result of fx: " << dynamic.get_f_x(input) << std::endl;
-    // std::cout << "Result of fu: " << dynamic.get_f_u(input) << std::endl;
-
+    iLQR control(&dynamic, &cost,
+                dt, N,
+                1.0, 1.0);
      
     while (ros::ok()) {
         ROS_INFO("Hello %s", "World");

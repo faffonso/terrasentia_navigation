@@ -11,15 +11,19 @@
 using namespace casadi;
 
 typedef struct l_prime {
-    double x;
+    std::vector<DM> l_x;
+    std::vector<DM> l_u;
+    std::vector<DM> l_xx;
+    std::vector<DM> l_uu;
 } l_prime_t;
 
 class Cost
 {
     protected:
         int _N;
+        l_prime_t _l_prime;
         SX _Qf, _Q, _R;
-        Function _l, _lf, _l_x, _l_u, _l_xx, _l_uu, _l_prime;
+        Function _l, _lf, _l_x, _l_u, _l_xx, _l_uu;
 
     public:
         Cost(int N, 
@@ -28,8 +32,9 @@ class Cost
             float R_v, float R_omega);
         // ~Cost();
 
-        std::vector<DM>  get_l_prime(std::vector<DM> input);
-        Eigen::MatrixXf get_Qf();
+        l_prime_t  get_l_prime(std::vector<DM> input);
+        double trajectory_cost(std::vector<std::vector<double>> x, std::vector<std::vector<double>> u);
+        SX get_Qf();
 };
 
-#endif // DYNAMICS_H
+#endif // COST_H
