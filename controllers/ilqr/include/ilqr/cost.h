@@ -9,12 +9,13 @@
 #include <casadi/casadi.hpp>
 
 using namespace casadi;
+using namespace Eigen;
 
 typedef struct l_prime {
-    std::vector<DM> l_x;
-    std::vector<DM> l_u;
-    std::vector<DM> l_xx;
-    std::vector<DM> l_uu;
+    MatrixXd l_x;
+    MatrixXd l_u;
+    MatrixXd l_xx;
+    MatrixXd l_uu;
 } l_prime_t;
 
 class Cost
@@ -30,11 +31,10 @@ class Cost
             float Qf_x, float Qf_y, float Qf_theta,
             float Q_x, float Q_y, float Q_theta,
             float R_v, float R_omega);
-        // ~Cost();
 
         l_prime_t  get_l_prime(std::vector<DM> input);
         double trajectory_cost(std::vector<std::vector<double>> x, std::vector<std::vector<double>> u);
-        SX get_Qf();
+        MatrixXd get_Qf();
 };
 
 #endif // COST_H

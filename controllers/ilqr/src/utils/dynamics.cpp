@@ -55,8 +55,8 @@ std::vector<DM> Dynamics::get_f(std::vector<DM> input) {
 
 f_prime_t Dynamics::get_f_prime(std::vector<DM> input)
 {
-    _f_prime.f_x = _f_x(input);
-    _f_prime.f_u = _f_u(input);
+    _f_prime.f_x = Eigen::Matrix<double, 3, 3>::Map(DM::densify(_f_x(input).at(0)).nonzeros().data(), 3, 3);
+    _f_prime.f_u = Eigen::Matrix<double, 3, 2>::Map(DM::densify(_f_u(input).at(0)).nonzeros().data(), 3, 2);
 
     return _f_prime;
 }

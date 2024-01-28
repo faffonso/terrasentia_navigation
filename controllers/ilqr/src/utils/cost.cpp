@@ -15,7 +15,6 @@ Cost::Cost(int N,
     _Q = casadi::DM::diag(Q_values);
     _R = casadi::DM::diag(R_values);
 
-    // State space
     SX x = SX::sym("x", 3);
     SX u = SX::sym("u", 2);
 
@@ -66,23 +65,24 @@ double Cost::trajectory_cost(std::vector<std::vector<double>> x, std::vector<std
     input = {DM(x[_N])};
     J += static_cast<double>(_lf(input).at(0));
 
-    ROS_INFO_STREAM("Total Cost= "<< J);
-
     return J;
 }
 
 l_prime_t  Cost::get_l_prime(std::vector<DM> input)
 {
-    _l_prime.l_x = _l_x(input);
-    _l_prime.l_u = _l_u(input);
+    _l_prime.l_x = Eigen::Matrix<double, 1, 3>::Map(DM::densify(_l_x(input).at(0)).nonzeros().data(), 1, 3);
+    _l_prime.l_u = Eigen::Matrix<double, 1, 2>::Map(DM::densify(_l_u(input).at(0)).nonzeros().data(), 1, 2);
     
-    _l_prime.l_xx = _l_xx(input);
-    _l_prime.l_uu = _l_uu(input);
+    _l_prime.l_xx = Eigen::Matrix<double, 3, 3>::Map(DM::densify(_l_xx(input).at(0)).nonzeros().data(), 3, 3);
+    _l_prime.l_uu = Eigen::Matrix<double, 2, 2>::Map(DM::densify(_l_uu(input).at(0)).nonzeros().data(), 2, 2);
 
     return _l_prime;
 }
 
-SX Cost::get_Qf()
+MatrixXd Cost::get_Qf()
 {
-    return _Qf;
+    MatrixXd Qf(3, 3);    
+    Qf = Eigen::Matrix<double, 3, 3>::Map(DM::densify(_Qf).nonzeros().data(), 3, 3);
+
+    return Qf;
 }

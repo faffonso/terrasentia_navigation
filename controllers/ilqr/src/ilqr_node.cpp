@@ -91,7 +91,16 @@ int main(int argc, char** argv)
     iLQR control(&dynamic, &cost,
                 dt, N,
                 1.0, 1.0);
-     
+    
+    VectorXd x0(3);
+    x0 << -4.0, -4.0, 0;
+
+    MatrixXd us(N, 2);
+    for (int n=0; n<N; n++)
+        us(n, 0) = 1.0;
+
+    control.fit(x0, us);
+
     while (ros::ok()) {
         ROS_INFO("Hello %s", "World");
         ros::spinOnce();
