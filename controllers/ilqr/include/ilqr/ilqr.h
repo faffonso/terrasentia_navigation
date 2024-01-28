@@ -27,9 +27,12 @@ class iLQR
         Cost* _cost;
 
         VectorXd _x0, _alphas;
-        MatrixXd _u0, _ks, _xs, _us;
+        MatrixXd _u0, _ks, _xs, _us, _xs_new, _us_new;
         Tensor<float, 3> _Ks;
-/*
+
+
+        void _forward_pass(double alpha);
+        /*
         void _forward_pass(std::vector<DM> xs,
                             std::vector<DM> us,
                             std::vector<double> ks,
