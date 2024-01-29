@@ -6,32 +6,66 @@
 #include "ilqr/cost.h"
 #include "ilqr/ilqr.h"
 
+bool initDynamics(Dynamics& dynamic, ros::NodeHandle& nh);
+bool initCost(Cost& cost, ros::NodeHandle& nh);
+
 int main(int argc, char** argv) 
 {
     ros::init(argc, argv, "ilqr_node");
     ros::NodeHandle nh;
 
-    ros::Rate rate(1);
+    ros::Rate rate(100);
 
+    Dynamics dynamic;
+    if (!initDynamics(dynamic, nh)) {
+        return 1; // Or handle the error appropriately
+    }
+
+    Cost cost;
+    if (!initCost(cost, nh)) {
+        return 1; // Or handle the error appropriately
+    }
+
+    int N;
+    float dt;
+
+    nh.getParam("/controller/dynamics/dt", dt);
+    nh.getParam("/controller/cost/N", N);
+
+    iLQR control(nh, &dynamic, &cost,
+                dt, N,
+                1.0, 1.0);
+    
+    while (ros::ok()) {
+        //ROS_INFO("Hello %s", "World");
+        control.run();
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+    return 0;
+}
+
+bool initDynamics(Dynamics& dynamic, ros::NodeHandle& nh) {
     float dt;
     std::string model;
 
-    if(!nh.getParam("/controller/dynamics/dt", dt))
-    {
+    if (!nh.getParam("/controller/dynamics/dt", dt)) {
         ROS_ERROR_STREAM("Sampling time (dt) could not be read.");
-        return 0;
+        return false;
     }
-    if(!nh.getParam("/controller/dynamics/model", model))
-    {
-        ROS_ERROR_STREAM("Dyamic model (model) could not be read.");
-        return 0;
+    if (!nh.getParam("/controller/dynamics/model", model)) {
+        ROS_ERROR_STREAM("Dynamic model (model) could not be read.");
+        return false;
     }
 
     ROS_INFO_STREAM("Creating Dynamic Model using dt: " << dt << ", model: " << model);
 
-    Dynamics dynamic(dt, model);
+    dynamic = Dynamics(dt, model);
+    return true;
+}
 
-
+bool initCost(Cost& cost, ros::NodeHandle& nh) {
     int N;
     float Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega;
 
@@ -81,31 +115,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    ROS_INFO_STREAM("Creating Dynamic Model using N: " << N << ", final state cost: " << Q_x  << " " << Q_y <<  " "  << Q_theta << ", state cost: " << Q_x << " " << Q_y << " " << Q_theta << ", action control cost: " << R_v << " " << R_omega);
+    ROS_INFO_STREAM("Creating Dynamic Model using N: " << N << ", final state cost: " << Q_x << " " << Q_y << " " << Q_theta << ", state cost: " << Q_x << " " << Q_y << " " << Q_theta << ", action control cost: " << R_v << " " << R_omega);
 
-    Cost cost(N, 
-            Qf_x, Qf_y, Qf_theta,
-            Q_x, Q_y, Q_theta,
-            R_v, R_omega);
-
-    iLQR control(&dynamic, &cost,
-                dt, N,
-                1.0, 1.0);
-    
-    VectorXd x0(3);
-    x0 << -4.0, -4.0, 0;
-
-    MatrixXd us(N, 2);
-    for (int n=0; n<N; n++)
-        us(n, 0) = 1.0;
-
-    control.fit(x0, us);
-
-    while (ros::ok()) {
-        ROS_INFO("Hello %s", "World");
-        ros::spinOnce();
-        rate.sleep();
-    }
-
-    return 0;
+    cost = Cost(N, Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega);
+    return true;
 }

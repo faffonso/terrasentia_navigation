@@ -1,11 +1,21 @@
 #include "ilqr/cost.h"
 
+Cost::Cost()
+{
+    _N = 10;
+    _Nx = 3;
+    _Nu = 2;
+}
+
 Cost::Cost(int N, 
             float Qf_x, float Qf_y, float Qf_theta,
             float Q_x, float Q_y, float Q_theta,
             float R_v, float R_omega)
 {
     _N = N;
+
+    _Nx = 3;
+    _Nu = 2;
 
     std::vector<double> Qf_values = {Qf_x, Qf_y, Qf_theta};
     std::vector<double> Q_values = {Q_x, Q_y, Q_theta};
@@ -18,8 +28,8 @@ Cost::Cost(int N,
     SX x = SX::sym("x", 3);
     SX u = SX::sym("u", 2);
 
-    SX l = 0.5 * (mtimes(x.T(), mtimes(_Q, x)) + mtimes(u.T(), mtimes(_R, u)));
-    SX lf = 0.5 * (mtimes(x.T(), mtimes(_Qf, x)));
+    SX l = (mtimes(x.T(), mtimes(_Q, x)) + mtimes(u.T(), mtimes(_R, u)));
+    SX lf = (mtimes(x.T(), mtimes(_Qf, x)));
 
     SX l_x = jacobian(l, x);
     SX l_u = jacobian(l, u);
@@ -35,10 +45,10 @@ Cost::Cost(int N,
     _l_uu = Function("l_uu", {x, u}, {l_uu});
 }
 
-double Cost::trajectory_cost(std::vector<std::vector<double>> x, std::vector<std::vector<double>> u)
+double Cost::trajectory_cost(MatrixXd x, MatrixXd u)
 {
-    std::size_t Nx = x.size();
-    std::size_t Nu = u.size();
+    std::size_t Nx = x.rows();
+    std::size_t Nu = u.rows();
 
     if (Nu != _N)
     {
@@ -53,16 +63,28 @@ double Cost::trajectory_cost(std::vector<std::vector<double>> x, std::vector<std
     }
 
 
+    int n, i;
     double J = 0;
-    std::vector<DM> input;
+    std::vector<float> xs(x.cols());
+    std::vector<float> us(u.cols());
+    std::vector<DM> input, result;
 
-    for (int i=0; i<_N; i++)
+    for (n=0; n<_N; n++)
     {
-        input = {DM(x[i]), DM(u[i])};
+        for (i=0; i<_Nx; i++)
+            xs.at(i) = x(n, i);
+
+        for (i=0; i<_Nu; i++)
+            us.at(i) = u(n, i);
+
+        input = {DM(xs), DM(us)};
         J += static_cast<double>(_l(input).at(0));
     }
     
-    input = {DM(x[_N])};
+    for (i=0; i<_Nx; i++)
+            xs.at(i) = (float)x(_N, i);
+
+    input = {DM(xs)};
     J += static_cast<double>(_lf(input).at(0));
 
     return J;

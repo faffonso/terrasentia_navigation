@@ -25,6 +25,7 @@ class Dynamics
         Function _f, _f_x, _f_u;
 
     public:
+        Dynamics();
         Dynamics(double dt, std::string model);
         std::vector<casadi::DM>  get_f(std::vector<DM> input);
         f_prime_t  get_f_prime(std::vector<DM> input);

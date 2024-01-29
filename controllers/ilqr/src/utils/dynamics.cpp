@@ -1,5 +1,11 @@
 #include "ilqr/dynamics.h"
 
+Dynamics::Dynamics()
+{
+    _dt = 0.1;
+    _model = "";
+}
+
 Dynamics::Dynamics(double dt, std::string model)
 {
     // Saving classes atributes

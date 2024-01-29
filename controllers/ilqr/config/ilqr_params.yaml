@@ -1,7 +1,7 @@
 ## iterative Linear Quatratic Regulator
 
 controller/iLQR:
-  N:    &N  10
+  N:    &N  15
   dt:   &dt 0.1
   v_max: 1.2
   omega_max: 2.0
@@ -14,12 +14,12 @@ controller/cost:
   Qf_y:     5.0
   Qf_theta: 3.5
 
-  Q_x:      3.0
-  Q_y:      3.0
-  Q_theta:  1.0
+  Q_x:      2.0
+  Q_y:      2.0
+  Q_theta:  1.0 
 
-  R_v:      0.75
-  R_omega:  0.5
+  R_v:      0.5
+  R_omega:  0.25
 
 controller/dynamics:
   dt: *dt
@@ -27,4 +27,5 @@ controller/dynamics:
 
 ## Odometry Params
 odom:
+  topic: "/terrasentia/will/odom"
   frame_id: "/terrasentia/will/odom"
