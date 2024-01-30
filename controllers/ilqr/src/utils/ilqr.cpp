@@ -123,7 +123,7 @@ void iLQR::fit(MatrixXd us)
     //ROS_INFO_STREAM("Trajectory cost: " << _J);
 
     int max_iter = 100;
-    float tol = 0.1;
+    float tol = 0.01;
     float regu=20.0;
     float max_regu = 1000.0;
     float min_regu = 20.0;

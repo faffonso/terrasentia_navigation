@@ -89,7 +89,7 @@ class NMPC:
             'ipopt.print_level':0, 
             'print_time':0, 
             'ipopt.acceptable_tol':1e-8, 
-            'ipopt.acceptable_obj_change_tol':1e-6}
+            'ipopt.acceptable_obj_change_tol':1e-3}
 
         opti.solver('ipopt', opts_setting)
 
