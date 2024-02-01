@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+from __future__ import print_function
+
+from wp_gen.srv import WpGen, WpGenResponse, WpGenRequest
+
 import rospy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
@@ -44,12 +48,24 @@ class Wp_gen():
 
         self.D = D
 
-    def run(self):
 
-        m1 = 7.33
-        m2 = 7.33
-        c1 = -110.0
-        c2 = -420.0
+    def run(self):
+        rospy.wait_for_service('WpGen')
+
+        try:
+            service_proxy = rospy.ServiceProxy('WpGen', WpGen)
+            
+            response = service_proxy()
+            print(response)
+
+        except rospy.ServiceException as e:
+            print("Service call failed:", e)
+        
+        m1 = response.left_line.m
+        c1 = response.left_line.b
+
+        m2 = response.right_line.m
+        c2 = response.right_line.b
 
         x, y = self.get_target(m1, m2, c1, c2)
 
@@ -78,8 +94,7 @@ class Wp_gen():
         self.goal_msg.pose.orientation.z = q[2]
         self.goal_msg.pose.orientation.w = q[3]
 
-        self.goal_pub.publish(self.goal_msg)
-        
+        self.goal_pub.publish(self.goal_msg)        
 
     def get_target(self, m1, m2, c1, c2):
         """ 
