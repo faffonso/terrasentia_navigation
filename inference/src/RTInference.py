@@ -9,12 +9,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 import torchvision.models as models
 
+import rospy
+
 from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import LaserScan
-from custom_msgs.srv import RTInferenceService
+from inference.srv import RTInferenceService
 from sensor_msgs.msg import LaserScan
 
-import rospy
 
 device = torch.device("cpu")
 
