@@ -1,11 +1,11 @@
 # RTInferenceService.srv
 
 # Request message
----
 # Empty request for this example, modify as needed
 ---
 
 # Response message
-float32[] y1p   # Array of floats for y1p
-float32[] y2p   # Array of floats for y2p
-float32[] image # Array of floats for image
+float32 m1
+float32 m2
+float32 b1
+float32 b2

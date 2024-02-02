@@ -14,7 +14,8 @@ import torchvision.models as models
 
 import rospy
 
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32
+from std_srvs.srv import Empty
 from sensor_msgs.msg import LaserScan
 from inference.srv import RTInferenceService
 from sensor_msgs.msg import LaserScan
@@ -55,10 +56,13 @@ class RTinference:
         self.y1p = np.ones(len(self.x))*50
         self.y2p = np.ones(len(self.x))*100
 
+        self.response = [0.0, 0.0, 0.0, 0.0] # m1, m2, b1, b2
+
         ############### RUN ###############
         # Set up the ROS subscriber
         rospy.init_node('RTinference', anonymous=True)
         rospy.Subscriber('/terrasentia/scan', LaserScan, self.lidar_callback)
+        rospy.loginfo("Server is ready to receive requests")
 
         # Set up the ROS service server
         rospy.Service('/rt_inference_service', RTInferenceService, self.rt_inference_service)
@@ -69,19 +73,34 @@ class RTinference:
         self.generate_image(data)
         image = self.get_image()
         predictions = self.inference(image)
+
+        if len(predictions) == 3: 
+            self.response = self.response = predictions + [predictions[0]] * (4 - len(predictions)) if len(predictions) == 3 else predictions
+            self.response = [self.response[0], self.response[3], self.response[2], self.response[1]]
+        else:
+            self.response = predictions
+        self.response = self.response.tolist()[0]
         self.y1p, self.y2p, self.image = self.prepare_plot(predictions, image)
 
     def rt_inference_service(self, req):
-        # This function is called when a service request is received
-        # You can modify it according to your needs
-        response = RTInferenceServiceResponse()
-        response.y1p = self.y1p.tolist()  # Convert numpy array to list
-        response.y2p = self.y2p.tolist()  # Convert numpy array to list
-        response.image = self.image.flatten().tolist()  # Convert 2D array to list
-        return response
+        rospy.loginfo(f"Received request: {req}")
+        print('response:', self.response)
+
+        m1 = self.response[0]
+        if len(self.response) == 4:
+            m2 = self.response[1]
+            b1 = self.response[2]
+            b2 = self.response[3]
+        elif len(self.response) == 3:
+            m2 = m1
+            b1 = self.response[1]
+            b2 = self.response[2]
+        
+        print(f'm1={m1}, m2={m2}, b1={b1}, b2={b2}')
+        #resp.image = self.image.flatten().tolist()  # Convert 2D array to list
+        return m1, m2, b1, b2
 
     ############### MODEL LOAD ############### 
-
     def load_model(self):
         ########### MOBILE NET ########### 
         self.model = models.mobilenet_v2()
@@ -199,11 +218,9 @@ class RTinference:
 
         if len(label) == 3:
             # we suppose m1 = m2, so we can use the same deprocess
-            print('supposing m1 = m2')   
             w1, q1, q2 = label
             w2 = w1
         elif len(label) == 4:
-            print('not supposing m1 = m2')        
             w1, w2, q1, q2 = label
 
         # DEPROCESS THE LABEL
