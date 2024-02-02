@@ -8,8 +8,8 @@ from wp_gen.msg import CropLine
 import rospy
 
 def callback(req):
-    left_line = CropLine(1.0, 2.0)
-    right_line = CropLine(3.0, 4.0)
+    left_line = CropLine(-2.25, 380.00)
+    right_line = CropLine(-2.25, 566.86)
 
     return WpGenResponse(left_line, right_line)
 

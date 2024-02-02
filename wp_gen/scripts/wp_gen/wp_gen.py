@@ -49,7 +49,7 @@ class Wp_gen():
         self.D = D
 
 
-    def run(self):
+    def run(self, verbose=True):
         rospy.wait_for_service('WpGen')
 
         try:
@@ -72,8 +72,6 @@ class Wp_gen():
         x *= self.row_width / self.img_width
         y *= self.row_height / self.img_height
 
-        y = 2.0
-        x = -0.15
 
         q = (
             self.odom_msg.pose.pose.orientation.x,
@@ -87,14 +85,17 @@ class Wp_gen():
         self.goal_msg.pose.position.y = self.odom_msg.pose.pose.position.x - (x * np.cos(heading_global) - y * np.sin(heading_global))
         self.goal_msg.pose.position.x = self.odom_msg.pose.pose.position.y + x * np.sin(heading_global) + y * np.cos(heading_global)
 
-        q = quaternion_from_euler(0.0, 0.0, heading + heading_global)
+        q = quaternion_from_euler(0.0, 0.0, - heading + heading_global)
 
         self.goal_msg.pose.orientation.x = q[0]
         self.goal_msg.pose.orientation.y = q[1]
         self.goal_msg.pose.orientation.z = q[2]
         self.goal_msg.pose.orientation.w = q[3]
 
-        self.goal_pub.publish(self.goal_msg)        
+        self.goal_pub.publish(self.goal_msg)    
+
+        if verbose == True:
+            print(f'New waypoint x={x} y={y}, heading={heading + heading_global} -- heading{heading} + global_heading{heading_global}')    
 
     def get_target(self, m1, m2, c1, c2):
         """ 
