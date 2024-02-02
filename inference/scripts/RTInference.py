@@ -21,11 +21,10 @@ from sensor_msgs.msg import LaserScan
 
 device = torch.device("cpu")
 
+runid = '01-02-2024_17-20-51'
+
 os.chdir('..')
 print(os.getcwd())
-
-global fid
-fid = 5
 
 class RTinference:
     def __init__(self):
@@ -83,7 +82,7 @@ class RTinference:
         torch.nn.Linear(256, 3)
         )
 
-        path = os.getcwd() + '/models/' + 'model_005_17-01-2024_15-38-12.pth'
+        path = os.getcwd() + '/models/' + 'model_' + runid + '.pth'
         checkpoint = torch.load(path, map_location='cpu')  # Load to CPU
         self.model.load_state_dict(checkpoint)
         self.model.eval()
@@ -154,33 +153,31 @@ class RTinference:
 
     ############### INFERENCE AND PLOT ###############
 
-    def deprocess(self, image, label):
+    def deprocess(self, label):
         ''' Returns the deprocessed image and label. '''
 
         if len(label) == 3:
             # we suppose m1 = m2, so we can use the same deprocess
-            #print('supposing m1 = m2')   
+            print('supposing m1 = m2')   
             w1, q1, q2 = label
             w2 = w1
         elif len(label) == 4:
-            #print('not supposing m1 = m2')        
+            print('not supposing m1 = m2')        
             w1, w2, q1, q2 = label
 
         # DEPROCESS THE LABEL
-        q1_original = ((q1 + 1) * (187.15 - (-56.06)) / 2) + (-56.06)
-        q2_original = ((q2 + 1) * (299.99 - 36.81) / 2) + 36.81
-        w1_original = ((w1 + 1) * (0.58 - (-0.58)) / 2) + (-0.58)
-        w2_original = ((w2 + 1) * (0.58 - (-0.58)) / 2) + (-0.58)
+        w1 = (w1 * std[0]) + mean[0]
+        w2 = (w2 * std[1]) + mean[1]
+        q1 = (q1 * std[2]) + mean[2]
+        q2 = (q2 * std[3]) + mean[3]
 
-        #print(f'labels w1={w1}, w2={w2}, q1={q1}, q2={q2}')
-        m1 = 1/w1_original
-        m2 = 1/w2_original
-        b1 = -q1_original / w1_original
-        b2 = -q2_original / w2_original
+        m1 = 1/w1
+        m2 = 1/w2
+        b1 = -q1/w1
+        b2 = -q2/w2
 
-        label = [m1, m2, b1, b2]
+        return [m1, m2, b1, b2]
 
-        return label
 
     def inference(self, image):
         # Inicie a contagem de tempo antes da inferência
@@ -199,7 +196,7 @@ class RTinference:
     def prepare_plot(self, predictions, image):
         # convert the predictions to numpy array
         predictions = predictions.to('cpu').cpu().detach().numpy()
-        predictions = self.deprocess(image=image, label=predictions[0].tolist())
+        predictions = self.deprocess(label=predictions[0].tolist())
 
 
         # convert image to cpu 
