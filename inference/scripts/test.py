@@ -1,32 +1,41 @@
-import yaml
+import json
+import os
 
-def find_parameters_by_id(target_id):
-    with open('../models/config.yaml', 'r') as file:
-        data = list(yaml.safe_load_all(file))
+os.chdir('..')
+def read_params_from_json(filename='./models/params.json', query_id=None):
+    try:
+        with open(filename, 'r') as file:
+            data = json.load(file)
 
-    if data:
-        for entry in data:
-            if entry.get('id') == target_id:
-                return {
-                    'mean0': entry.get('mean0'),
-                    'mean1': entry.get('mean1'),
-                    'mean2': entry.get('mean2'),
-                    'mean3': entry.get('mean3'),
-                    'std0': entry.get('std0'),
-                    'std1': entry.get('std1'),
-                    'std2': entry.get('std2'),
-                    'std3': entry.get('std3'),
-                }
+            print(data)
+            if query_id is not None and data['id'] != query_id:
+                return None  # Return None if the queried id does not match
 
-    return None  # ID not found
+            result_dict = {
+                'id': data['id'],
+                'mean0': data['mean0'],
+                'mean1': data['mean1'],
+                'mean2': data['mean2'],
+                'mean3': data['mean3'],
+                'std0': data['std0'],
+                'std1': data['std1'],
+                'std2': data['std2'],
+                'std3': data['std3']
+            }
 
-# Example usage
-target_id = '01-02-2024_15-03-08'
-result = find_parameters_by_id(target_id)
+            return result_dict
 
-if result:
-    print(f"Parameters for ID '{target_id}':")
-    for key, value in result.items():
-        print(f"{key}: {value}")
+    except (FileNotFoundError, json.decoder.JSONDecodeError, KeyError):
+        return None  # Return None if there is an issue with file reading or data structure
+
+# Example usage:
+query_id = "02-02-2024_00-45-55"
+result = read_params_from_json(query_id=query_id)
+
+if result is not None:
+    print("Query Result:")
+    print(json.dumps(result, indent=4))
+    print('-'*10)
+    print(result['std1'])
 else:
-    print(f"ID '{target_id}' not found in the YAML file.")
+    print("No data found for the specified id.")

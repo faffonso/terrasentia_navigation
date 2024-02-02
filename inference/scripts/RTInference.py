@@ -3,8 +3,9 @@
 from __future__ import print_function
 
 import os
-import time
 import cv2
+import time
+import json
 import torch
 import numpy as np
 import matplotlib
@@ -21,7 +22,7 @@ from sensor_msgs.msg import LaserScan
 
 device = torch.device("cpu")
 
-runid = '01-02-2024_17-20-51'
+runid = '02-02-2024_00-45-55'
 
 os.chdir('..')
 print(os.getcwd())
@@ -29,7 +30,23 @@ print(os.getcwd())
 class RTinference:
     def __init__(self):
         print('init...')
+
+        ########## MODEL LOAD ##########
         self.load_model()
+
+        ########## PARAMS LOAD ##########
+        result = self.read_params_from_json(query_id=runid)
+        if result is not None:
+            print('params.json query sucessful.')
+            self.mean = [result['mean0'], result['mean1'], result['mean2'], result['mean3']]
+            self.std = [result['std0'], result['std1'], result['std2'], result['std3']]
+        else:
+            print("No data found for the specified id.")
+            self.mean = None
+            self.std = None
+
+        print('mean:', self.mean)
+        print('std:', self.std)
 
         ########## PLOT ##########
         self.fig, _ = plt.subplots(figsize=(8, 5), frameon=True)
@@ -76,10 +93,7 @@ class RTinference:
         torch.nn.Linear(num_ftrs, 512),
         torch.nn.BatchNorm1d(512),
         torch.nn.ReLU(inplace=True),
-        torch.nn.Linear(512, 256),
-        torch.nn.BatchNorm1d(256),
-        torch.nn.ReLU(inplace=True),
-        torch.nn.Linear(256, 3)
+        torch.nn.Linear(512, 3)
         )
 
         path = os.getcwd() + '/models/' + 'model_' + runid + '.pth'
@@ -88,6 +102,33 @@ class RTinference:
         self.model.eval()
 
     ############### DATA EXTRACTION ###############
+
+    def read_params_from_json(self, filename='./models/params.json', query_id=None):
+        if os.getcwd() == 'scripts':
+            os.chdir('..')
+        try:
+            with open(filename, 'r') as file:
+                data = json.load(file)
+
+                if query_id is not None and data['id'] != query_id:
+                    return None  # Return None if the queried id does not match
+
+                result_dict = {
+                    'id': data['id'],
+                    'mean0': data['mean0'],
+                    'mean1': data['mean1'],
+                    'mean2': data['mean2'],
+                    'mean3': data['mean3'],
+                    'std0': data['std0'],
+                    'std1': data['std1'],
+                    'std2': data['std2'],
+                    'std3': data['std3']
+                }
+
+                return result_dict
+
+        except (FileNotFoundError, json.decoder.JSONDecodeError, KeyError):
+            return None
 
     def generate_image(self, data):
 
@@ -166,10 +207,10 @@ class RTinference:
             w1, w2, q1, q2 = label
 
         # DEPROCESS THE LABEL
-        w1 = (w1 * std[0]) + mean[0]
-        w2 = (w2 * std[1]) + mean[1]
-        q1 = (q1 * std[2]) + mean[2]
-        q2 = (q2 * std[3]) + mean[3]
+        w1 = (w1 * self.std[0]) + self.mean[0]
+        w2 = (w2 * self.std[1]) + self.mean[1]
+        q1 = (q1 * self.std[2]) + self.mean[2]
+        q2 = (q2 * self.std[3]) + self.mean[3]
 
         m1 = 1/w1
         m2 = 1/w2
