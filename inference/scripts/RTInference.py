@@ -19,7 +19,7 @@ from std_msgs.msg import Float32
 from std_srvs.srv import Empty
 from sensor_msgs.msg import LaserScan
 from inference.srv import RTInferenceService
-from sensor_msgs.msg import LaserScan
+
 
 
 device = torch.device("cpu")
@@ -68,20 +68,22 @@ class RTinference:
     ############### ROS INTEGRATION ###############
     def lidar_callback(self, data):
         self.generate_image(data)
-        self.image = image = self.get_image()
+        self.image = self.get_image()
         
-        self.response = self.inference(image)
+        self.response = self.inference(self.image)
 
 
     def rt_inference_service(self, req):
-        rospy.loginfo(f"Received request: {req}")
+        rospy.loginfo(cf.yellow(f"Received request {req}"))
         
         # self.response is the mechanism that permits the call service to get the most uptated data
         m1, m2, b1, b2 = self.response
         print(f'm1={m1:.2f}, m2={m2:.2f}, b1={b1:.2f}, b2={b2:.2f}')
 
-        return m1, m2, b1, b2
-
+        image = self.image.to('cpu').cpu().detach().numpy().tolist()[0][0][0]
+        
+        #return m1, m2, b1, b2
+        return m1, m2, b1, b2, image
 
     ############### MODEL LOAD ############### 
     def load_model(self):
