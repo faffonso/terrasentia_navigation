@@ -80,7 +80,9 @@ class RTinference:
         m1, m2, b1, b2 = self.response
         print(f'm1={m1:.2f}, m2={m2:.2f}, b1={b1:.2f}, b2={b2:.2f}')
 
-        image = self.image.to('cpu').cpu().detach().numpy().tolist()[0][0][0]
+
+        image = self.image.to('cpu').cpu().detach().numpy()
+        image = image.flatten().tolist()
         
         #return m1, m2, b1, b2
         return m1, m2, b1, b2, image
