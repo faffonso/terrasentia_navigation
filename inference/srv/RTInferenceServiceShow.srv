@@ -1,4 +1,4 @@
-# RTInferenceService.srv
+# RTInferenceServiceShow.srv
 
 # Request message
 # Empty request for this example, modify as needed
@@ -9,3 +9,4 @@ float32 m1
 float32 m2
 float32 b1
 float32 b2
+float32[] image

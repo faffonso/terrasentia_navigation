@@ -19,12 +19,15 @@ from std_msgs.msg import Float32
 from std_srvs.srv import Empty
 from sensor_msgs.msg import LaserScan
 from inference.srv import RTInferenceService
-
-
+from inference.srv import RTInferenceServiceShow
 
 device = torch.device("cpu")
 
+############ GLOBAL PARAMS ############
+global runid
 runid = '02-02-2024_00-45-55'
+global SHOW
+SHOW = False
 
 os.chdir('..')
 print(os.getcwd())
@@ -47,9 +50,6 @@ class RTinference:
             self.mean = None
             self.std = None
 
-        print('mean:', self.mean)
-        print('std:', self.std)
-
         ########## PLOT ##########
         self.fig, _ = plt.subplots(figsize=(8, 5), frameon=True)
         self.image = np.zeros((224, 224))  # empty blank (224, 224) self.image
@@ -62,8 +62,10 @@ class RTinference:
         rospy.loginfo(cf.green("Server is ready to receive requests"))
 
         # Set up the ROS service server
-        rospy.Service('/rt_inference_service', RTInferenceService, self.rt_inference_service)
-
+        if SHOW:
+            rospy.Service('/rt_inference_service', RTInferenceServiceShow, self.rt_inference_service)
+        else:
+            rospy.Service('/rt_inference_service', RTInferenceService, self.rt_inference_service)
 
     ############### ROS INTEGRATION ###############
     def lidar_callback(self, data):
@@ -84,8 +86,10 @@ class RTinference:
         image = self.image.to('cpu').cpu().detach().numpy()
         image = image.flatten().tolist()
         
-        #return m1, m2, b1, b2
-        return m1, m2, b1, b2, image
+        if SHOW:
+            return m1, m2, b1, b2, image
+        else:
+            return m1, m2, b1, b2
 
     ############### MODEL LOAD ############### 
     def load_model(self):

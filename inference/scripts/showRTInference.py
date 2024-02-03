@@ -8,6 +8,10 @@ from matplotlib.colors import PowerNorm
 
 import rospy
 from inference.srv import RTInferenceService
+from inference.srv import RTInferenceServiceShow
+
+global SHOW
+SHOW = False
 
 class clientRTInference:
     def __init__(self):
@@ -16,7 +20,10 @@ class clientRTInference:
         
         try:
             # Create a service proxy
-            rt_inference_service = rospy.ServiceProxy('rt_inference_service', RTInferenceService)
+            if SHOW:
+                rt_inference_service = rospy.ServiceProxy('rt_inference_service', RTInferenceServiceShow)
+            else:       
+                rt_inference_service = rospy.ServiceProxy('rt_inference_service', RTInferenceService)
             
             # Call the service with the request
             response = rt_inference_service()
@@ -26,16 +33,20 @@ class clientRTInference:
             m2 = response.m2
             b1 = response.b1
             b2 = response.b2
-            image = response.image
-            
+            if SHOW:
+                image = response.image
+            else: 
+                image = np.zeros(224*224)
+        
             rospy.loginfo(f"Client received a response: m1={m1}, m2={m2}, b1={b1}, b2={b2}")
             
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed: %s" % e)
 
-        x = np.arange(0, 224)
+        x = np.arange(224)
         y1p, y2p, image = self.prepare_plot(x, [m1, m2, b1, b2], image)
-        self.show(x, y1p, y2p, image)
+        if SHOW:
+            self.show(x, y1p, y2p, image)
 
 
     def prepare_plot(self, x, predictions, image):
@@ -49,12 +60,10 @@ class clientRTInference:
         y2p = m2p*x + b2p
 
         image = np.array(image)
-        print('old:', image.shape)
 
         # reshape
         image = image.reshape((224, 224))
 
-        print('new:', image.shape)
 
         return y1p, y2p, image
 
