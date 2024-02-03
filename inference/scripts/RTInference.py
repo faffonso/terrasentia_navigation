@@ -9,6 +9,7 @@ import json
 import torch
 import numpy as np
 import matplotlib
+import colorful as cf
 import matplotlib.pyplot as plt
 import torchvision.models as models
 
@@ -51,18 +52,14 @@ class RTinference:
 
         ########## PLOT ##########
         self.fig, _ = plt.subplots(figsize=(8, 5), frameon=True)
-        self.x = np.arange(0, 224)
         self.image = np.zeros((224, 224))  # empty blank (224, 224) self.image
-        self.y1p = np.ones(len(self.x))*50
-        self.y2p = np.ones(len(self.x))*100
-
         self.response = [0.0, 0.0, 0.0, 0.0] # m1, m2, b1, b2
 
         ############### RUN ###############
         # Set up the ROS subscriber
         rospy.init_node('RTinference', anonymous=True)
         rospy.Subscriber('/terrasentia/scan', LaserScan, self.lidar_callback)
-        rospy.loginfo("Server is ready to receive requests")
+        rospy.loginfo(cf.green("Server is ready to receive requests"))
 
         # Set up the ROS service server
         rospy.Service('/rt_inference_service', RTInferenceService, self.rt_inference_service)
@@ -71,34 +68,20 @@ class RTinference:
     ############### ROS INTEGRATION ###############
     def lidar_callback(self, data):
         self.generate_image(data)
-        image = self.get_image()
-        predictions = self.inference(image)
+        self.image = image = self.get_image()
+        
+        self.response = self.inference(image)
 
-        if len(predictions) == 3: 
-            self.response = self.response = predictions + [predictions[0]] * (4 - len(predictions)) if len(predictions) == 3 else predictions
-            self.response = [self.response[0], self.response[3], self.response[2], self.response[1]]
-        else:
-            self.response = predictions
-        self.response = self.response.tolist()[0]
-        self.y1p, self.y2p, self.image = self.prepare_plot(predictions, image)
 
     def rt_inference_service(self, req):
         rospy.loginfo(f"Received request: {req}")
-        print('response:', self.response)
-
-        m1 = self.response[0]
-        if len(self.response) == 4:
-            m2 = self.response[1]
-            b1 = self.response[2]
-            b2 = self.response[3]
-        elif len(self.response) == 3:
-            m2 = m1
-            b1 = self.response[1]
-            b2 = self.response[2]
         
-        print(f'm1={m1}, m2={m2}, b1={b1}, b2={b2}')
-        #resp.image = self.image.flatten().tolist()  # Convert 2D array to list
+        # self.response is the mechanism that permits the call service to get the most uptated data
+        m1, m2, b1, b2 = self.response
+        print(f'm1={m1:.2f}, m2={m2:.2f}, b1={b1:.2f}, b2={b2:.2f}')
+
         return m1, m2, b1, b2
+
 
     ############### MODEL LOAD ############### 
     def load_model(self):
@@ -211,7 +194,37 @@ class RTinference:
         image = torch.from_numpy(image).float()
         return image
 
-    ############### INFERENCE AND PLOT ###############
+    ############### INFERENCE AND PLOT ##############
+
+    def inference(self, image):
+        # Inicie a contagem de tempo antes da inferência
+        start_time = time.time()
+
+        # get the model predictions
+        predictions = self.model(image)
+
+        # Encerre a contagem de tempo após a inferência
+        end_time = time.time()
+
+        #print('Inference time: {:.4f} ms'.format((end_time - start_time)*1000))
+        
+        # correct different format inputs
+        predictions = predictions.to('cpu').cpu().detach().numpy().tolist()[0]
+        if len(predictions) == 3:
+            w1, q1, q2 = predictions
+            w2 = w1
+        elif len(predictions) == 4:
+            w1, w2, q1, q2 = predictions
+        else: 
+            w1, w2, q1, q2 = [None, None, None, None]
+
+        # deprocess
+        if not any(e is None for e in [w1, w2, q1, q2]): # enter only if there is no None in the list
+            m1, m2, b1, b2 = self.deprocess(label=[w1, w2, q1, q2])
+        else:
+            m1, m2, b1, b2 = [w1, w2, q1, q2] # Can't use this data
+
+        return [m1, m2, b1, b2]
 
     def deprocess(self, label):
         ''' Returns the deprocessed image and label. '''
@@ -236,42 +249,6 @@ class RTinference:
 
         return [m1, m2, b1, b2]
 
-
-    def inference(self, image):
-        # Inicie a contagem de tempo antes da inferência
-        start_time = time.time()
-
-        # get the model predictions
-        predictions = self.model(image)
-
-        # Encerre a contagem de tempo após a inferência
-        end_time = time.time()
-
-        #print('Inference time: {:.4f} ms'.format((end_time - start_time)*1000))
-
-        return predictions
-
-    def prepare_plot(self, predictions, image):
-        # convert the predictions to numpy array
-        predictions = predictions.to('cpu').cpu().detach().numpy()
-        predictions = self.deprocess(label=predictions[0].tolist())
-
-
-        # convert image to cpu 
-        image = image.to('cpu').cpu().detach().numpy()
-        # image it is shape (1, 1, 507, 507), we need to remove the first dimension
-        image = image[0][0]
-
-        # line equations explicitly
-
-        # get the slopes and intercepts
-        m1p, m2p, b1p, b2p = predictions
-
-        # get the x and y coordinates of the lines
-        y1p = m1p*self.x + b1p
-        y2p = m2p*self.x + b2p
-
-        return y1p, y2p, image
 
 ############### MAIN ###############
 
