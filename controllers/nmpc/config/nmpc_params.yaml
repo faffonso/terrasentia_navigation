@@ -13,8 +13,8 @@ controller/NMPC:
   R_omega:  0.1
 
   # Boundary Action Control
-  v_max:      1.2 # m/s
-  omega_max:  2.0 # rad/s
+  v_max:      0.8 # m/s
+  omega_max:  1.5 # rad/s
 
 ## Odometry Params
 odom:
