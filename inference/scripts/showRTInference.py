@@ -11,7 +11,7 @@ from inference.srv import RTInferenceService
 from inference.srv import RTInferenceServiceShow
 
 global SHOW
-SHOW = False
+SHOW = True
 
 class clientRTInference:
     def __init__(self):

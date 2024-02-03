@@ -2,6 +2,9 @@
 
 from __future__ import print_function
 
+import warnings
+warnings.filterwarnings("ignore")
+
 import os
 import cv2
 import time
@@ -27,7 +30,7 @@ device = torch.device("cpu")
 global runid
 runid = '02-02-2024_00-45-55'
 global SHOW
-SHOW = False
+SHOW = True
 
 os.chdir('..')
 print(os.getcwd())
