@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib
 import colorful as cf
 import matplotlib.pyplot as plt
+from matplotlib.colors import PowerNorm
 import torchvision.models as models
 
 import rospy
@@ -23,6 +24,9 @@ from std_srvs.srv import Empty
 from sensor_msgs.msg import LaserScan
 from inference.srv import RTInferenceService
 from inference.srv import RTInferenceServiceShow
+
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 device = torch.device("cpu")
 
@@ -64,6 +68,9 @@ class RTinference:
         rospy.Subscriber('/terrasentia/scan', LaserScan, self.lidar_callback)
         rospy.loginfo(cf.green("Server is ready to receive requests"))
 
+        self.pub = rospy.Publisher('/lidar_plot', Image, queue_size=10)
+        self.bridge = CvBridge()
+
         # Set up the ROS service server
         if SHOW:
             rospy.Service('/rt_inference_service', RTInferenceServiceShow, self.rt_inference_service)
@@ -74,8 +81,21 @@ class RTinference:
     def lidar_callback(self, data):
         self.generate_image(data)
         self.image = self.get_image()
-        
+
         self.response = self.inference(self.image)
+
+        # Assuming self.image is a torch.Tensor, convert it to a NumPy array
+        image_np = np.squeeze(self.image.detach().cpu().numpy())
+        
+        print(image_np.shape)
+
+        # Convert to BGR format (assuming self.image is a single-channel image)
+        image_bgr = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+
+        # Convert the NumPy array to ROS format
+        ros_image = self.bridge.cv2_to_imgmsg(image_bgr, encoding="passthrough")
+
+        self.pub.publish(ros_image)
 
 
     def rt_inference_service(self, req):
