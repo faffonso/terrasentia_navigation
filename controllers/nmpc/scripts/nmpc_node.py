@@ -6,7 +6,7 @@ import yaml
 from module.nmpc_controller import NMPC
 
 def main():
-    rospy.init_node('nmpc_controller')
+    rospy.init_node('nmpc_controller_node')
 
     rate = rospy.Rate(100) 
 
