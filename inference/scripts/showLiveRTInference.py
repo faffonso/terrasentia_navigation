@@ -12,6 +12,7 @@ matplotlib.use('TkAgg')
 import rospy
 from inference.srv import RTInferenceService
 from inference.srv import RTInferenceServiceShow
+#~/catkin_ws/src/terrasentia_navigation/inference/scripts
 
 global SHOW
 SHOW = True

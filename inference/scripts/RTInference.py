@@ -87,8 +87,6 @@ class RTinference:
         # Assuming self.image is a torch.Tensor, convert it to a NumPy array
         image_np = np.squeeze(self.image.detach().cpu().numpy())
         
-        print(image_np.shape)
-
         # Convert to BGR format (assuming self.image is a single-channel image)
         image_bgr = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
 
