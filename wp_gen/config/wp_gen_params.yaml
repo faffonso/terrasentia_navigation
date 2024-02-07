@@ -5,4 +5,7 @@ wp_gen/img:
   img_width: 244    #px
   D: 2.5            #m
 
+wp_gen/odom:
+  topic: "/terrasentia/will/odom"
+  frame_id: "terrasentia/will/odom"
 
