@@ -8,6 +8,7 @@ import rospy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 import numpy as np
+import matplotlib.pyplot as plt
 import math
 
 from nav_msgs.msg import Odometry
@@ -38,13 +39,17 @@ class Wp_gen():
         self.img_height = img_height
         self.img_width = img_width
 
-        self.odom_sub = rospy.Subscriber('/terrasentia/ekf2', Odometry, self.odom_callback)
+        odom_topic = rospy.get_param("wp_gen/odom/topic")
+        frame_id = rospy.get_param("wp_gen/odom/frane_id")
+
+
+        self.odom_sub = rospy.Subscriber(odom_topic, Odometry, self.odom_callback)
         self.goal_pub = rospy.Publisher('/terrasentia/goal', PoseStamped, queue_size=10)
 
         self.odom_msg = Odometry()
         self.goal_msg = PoseStamped()
-        self.goal_msg.header.frame_id = "map"
-
+        self.goal_msg.header.frame_id = frame_id
+        
         self.D = D
 
 
@@ -71,8 +76,9 @@ class Wp_gen():
         x *= self.row_width / self.img_width
         y *= self.row_height / self.img_height
 
-        x = 0.5
-        y = 2.0
+        y = 4.5
+        x = -0.7
+
 
         q = (
             self.odom_msg.pose.pose.orientation.x,
@@ -83,8 +89,17 @@ class Wp_gen():
 
         heading = np.arctan2(x, y)
 
-        self.goal_msg.pose.position.y = self.odom_msg.pose.pose.position.x - (x * np.cos(heading_global) - y * np.sin(heading_global))
-        self.goal_msg.pose.position.x = self.odom_msg.pose.pose.position.y + x * np.sin(heading_global) + y * np.cos(heading_global)
+        print("Y Values")
+        print(f'Global x {self.odom_msg.pose.pose.position.x}')
+        print(f'Global y {self.odom_msg.pose.pose.position.y}')
+        print(f'x * cos {x * np.cos(heading_global)}')
+        print(f'x * sin {x * np.sin(heading_global)}')
+        print(f'y * cos {y * np.cos(heading_global)}')
+        print(f'y * sin {y * np.sin(heading_global)}')
+
+
+        self.goal_msg.pose.position.x = self.odom_msg.pose.pose.position.x + x * np.sin(heading_global) + y * np.cos(heading_global)
+        self.goal_msg.pose.position.y = self.odom_msg.pose.pose.position.y - (x * np.cos(heading_global) - y * np.sin(heading_global))
 
         q = quaternion_from_euler(0.0, 0.0, - heading + heading_global)
 

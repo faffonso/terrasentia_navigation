@@ -1,0 +1,6 @@
+<launch>
+    <!-- WP Gen Server -->
+    <rosparam file="$(find nmpc)/config/wp_gen_params.yaml" command="load"/>
+    <node pkg="wp_gen" type="wp_gen_node.py" name="nmpc_node" output="screen"/>
+    <node pkg="wp_gen" type="wp_gen_server.py" name="nmpc_node" output="screen"/>
+</launch>
