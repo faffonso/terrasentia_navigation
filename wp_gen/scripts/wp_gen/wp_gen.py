@@ -8,7 +8,6 @@ import rospy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 import numpy as np
-import matplotlib.pyplot as plt
 import math
 
 from nav_msgs.msg import Odometry
@@ -39,12 +38,12 @@ class Wp_gen():
         self.img_height = img_height
         self.img_width = img_width
 
-        self.odom_sub = rospy.Subscriber('/terrasentia/will/odom', Odometry, self.odom_callback)
+        self.odom_sub = rospy.Subscriber('/terrasentia/ekf2', Odometry, self.odom_callback)
         self.goal_pub = rospy.Publisher('/terrasentia/goal', PoseStamped, queue_size=10)
 
         self.odom_msg = Odometry()
         self.goal_msg = PoseStamped()
-        self.goal_msg.header.frame_id = "terrasentia/will/odom"
+        self.goal_msg.header.frame_id = "map"
 
         self.D = D
 
@@ -72,6 +71,8 @@ class Wp_gen():
         x *= self.row_width / self.img_width
         y *= self.row_height / self.img_height
 
+        x = 0.5
+        y = 2.0
 
         q = (
             self.odom_msg.pose.pose.orientation.x,

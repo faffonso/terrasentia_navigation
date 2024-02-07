@@ -36,6 +36,10 @@ iLQR::iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost,
 
     _odom_msg.pose.pose.orientation.w = 1.0;
 
+    _goal_msg.pose.position.x = 0.0;
+    _goal_msg.pose.position.y = 0.0;
+    _goal_msg.pose.orientation.w = 1.0;
+
     _goal_sub = _nh.subscribe("terrasentia/goal", 10, &iLQR::_goal_callback, this);
     _odom_sub = _nh.subscribe(_odom_topic, 10, &iLQR::_odom_callback, this);
 
@@ -58,19 +62,16 @@ void iLQR::run()
     tf::Matrix3x3 m(q);
     m.getRPY(roll, pitch, yaw);
 
-
     _x << _odom_msg.pose.pose.position.x,
             _odom_msg.pose.pose.position.y,
             yaw;
-
 
     tf::Quaternion q1(_goal_msg.pose.orientation.x,
                                     _goal_msg.pose.orientation.y,
                                     _goal_msg.pose.orientation.z,
                                     _goal_msg.pose.orientation.w);
-    tf::Matrix3x3 m1(q);
+    tf::Matrix3x3 m1(q1);
     m1.getRPY(roll, pitch, yaw);
-
 
     _xref << _goal_msg.pose.position.x,
                 _goal_msg.pose.position.y,
@@ -134,7 +135,7 @@ void iLQR::fit(MatrixXd us)
         regu = std::min(regu, max_regu);
         regu = std::max(regu, min_regu);
 
-        this->_backward_pass(regu);
+        this->_backward_pass(regu); 
 
         if (std::abs(_delta_J) < tol)
         {
@@ -208,7 +209,7 @@ void iLQR::_forward_pass(float alpha)
 }
 
 void iLQR::_backward_pass(float regu)
-{
+{    
     int n, i, j;
     double J=0;
 
@@ -245,8 +246,8 @@ void iLQR::_backward_pass(float regu)
         Q_x = l_prime.l_x + s * f_prime.f_x;
         Q_u = l_prime.l_u + s * f_prime.f_u;
 
-        Q_x = Q_x.transpose();
-        Q_u = Q_u.transpose();
+        Q_x.transposeInPlace();
+        Q_u.transposeInPlace();
 
         Q_xx = l_prime.l_xx + f_prime.f_x.transpose() * S * f_prime.f_x;
         Q_uu = l_prime.l_uu + f_prime.f_u.transpose() * S * f_prime.f_u;
@@ -266,7 +267,7 @@ void iLQR::_backward_pass(float regu)
         s = Q_x + K.transpose() * Q_u + Q_ux.transpose() * k + K.transpose() * Q_uu * k;
         S = Q_xx + K.transpose() * Q_uu * K + K.transpose() * Q_ux + Q_ux.transpose() * K;
 
-        s = s.transpose();
+        s.transposeInPlace();
 
         J += (0.5 * (k.transpose() * Q_uu * k) + k.transpose() * Q_u)(0,0);
     }

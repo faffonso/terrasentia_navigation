@@ -3,10 +3,8 @@
 import rospy
 
 import numpy as np
-import matplotlib.pyplot as plt
-import cv2
 
-from wp_gen.wp_gen import *
+from wp_gen.wp_gen import Wp_gen
 
 def main():
     rospy.init_node('wp_gen_node')

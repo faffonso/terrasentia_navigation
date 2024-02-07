@@ -115,7 +115,7 @@ bool initCost(Cost& cost, ros::NodeHandle& nh) {
         return 0;
     }
 
-    ROS_INFO_STREAM("Creating Dynamic Model using N: " << N << ", final state cost: " << Q_x << " " << Q_y << " " << Q_theta << ", state cost: " << Q_x << " " << Q_y << " " << Q_theta << ", action control cost: " << R_v << " " << R_omega);
+    ROS_INFO_STREAM("Creating Dynamic Model using N: " << N << ", final state cost: " << Qf_x << " " << Qf_y << " " << Qf_theta << ", state cost: " << Q_x << " " << Q_y << " " << Q_theta << ", action control cost: " << R_v << " " << R_omega);
 
     cost = Cost(N, Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega);
     return true;

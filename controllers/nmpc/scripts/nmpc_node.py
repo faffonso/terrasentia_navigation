@@ -3,7 +3,7 @@
 import rospy
 import yaml
 
-from module.nmpc_controller import NMPC
+from nmpc.nmpc_controller import NMPC
 
 def main():
     rospy.init_node('nmpc_controller_node')
