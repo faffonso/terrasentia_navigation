@@ -134,7 +134,9 @@ class iLQR
          * @param us Optimal action control
          */
         void fit(MatrixXd us);
-        
+
+
+
 };
 
 #endif // ILQR_H

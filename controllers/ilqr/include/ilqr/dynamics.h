@@ -27,14 +27,15 @@ typedef struct f_prime {
     MatrixXd f_x; // df/dx
     MatrixXd f_u; // df/du
 } f_prime_t;
+
 class Dynamics
 {
     protected:
         float _dt;              // Sampling time [s]     
         std::string _model;     // Dynamic model (standard or error-tracking)
-        f_prime_t _f_prime;     // Contains dynamic jacobians
-        
-        Function _f, _f_x, _f_u;    // CasADi function
+
+        f_prime_t _f_prime;         // Contains dynamic jacobians
+        Function _f, _f_x, _f_u;    // Dynamics Functions
 
     public:
         /**
@@ -48,6 +49,8 @@ class Dynamics
          * 
          * @param dt Sampling time [s]
          * @param model Dynamic model (standard or error-tracking)
+         * @param v_max Max linear speed
+         * @param omega_max Max angular speed
          */
         Dynamics(double dt, std::string model);
 

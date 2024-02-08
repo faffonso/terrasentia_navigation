@@ -159,10 +159,6 @@ class Wp_gen():
         self.odom_msg = msg
 
     def _convert_origin(self, m1, m2, c1, c2):
-
-        widht_min = -self.img_width/2
-        widht_max = self.img_width/2
-
         m = -(m1 + m2) / 2
         c = -(c1 + c2) / 2 
         c -= self.img_width

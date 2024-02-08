@@ -33,17 +33,31 @@ typedef struct l_prime {
     MatrixXd l_uu;  // d^2 l / du^2 
 } l_prime_t;
 
+typedef struct c_prime {
+    MatrixXd c_x; // dc/dx
+    MatrixXd c_u; // dc/du
+} c_prime_t;
+
 class Cost
 {
     protected:
-        int _N,  // Precition horizon size
-            _Nx, // State vector size
-            _Nu; // Action control vector size
+        int _N,     // Precition horizon size
+            _Nx,    // State vector size
+            _Nu,    // Action control vector size
+            _p=2;   // Number os Constraints
+
+        MatrixXd _I_mu;
+        std::vector<float> _lambda;
 
         l_prime_t _l_prime; // Struct contains cost funcion derivatives
+        c_prime_t _c_prime; // Contains constraints jacobians
+
+        
         SX _Qf, _Q, _R;     // Weight matrices
         
         Function _l, _lf, _l_x, _l_u, _l_xx, _l_uu; // CasADi functions of cost interface
+        Function _c, _c_x, _c_u;    // CasADi Constraints Functions
+
 
     public:
         /**
@@ -68,7 +82,8 @@ class Cost
         Cost(int N, 
             float Qf_x, float Qf_y, float Qf_theta,
             float Q_x, float Q_y, float Q_theta,
-            float R_v, float R_omega);
+            float R_v, float R_omega, 
+            float v_max, float omega_max);
 
         /**
          * @brief Get the l prime object
@@ -77,6 +92,9 @@ class Cost
          * @return l_prime_t 
          */
         l_prime_t  get_l_prime(std::vector<DM> input);
+
+        std::vector<casadi::DM> get_c(std::vector<DM> input);
+        c_prime_t get_c_prime(std::vector<DM> input);
 
         /**
          * @brief Get trajectory cost

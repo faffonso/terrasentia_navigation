@@ -36,9 +36,18 @@ int main(int argc, char** argv)
                 dt, N,
                 1.0, 1.0);
     
+    // Crie uma matriz de zeros NxN
+    Eigen::MatrixXd x(N+1, 3);
+    x.setZero();
+
+    // Crie uma matriz de uns NxNu
+    Eigen::MatrixXd u(N, 2);
+    u.setOnes();
+
     while (ros::ok()) {
         //ROS_INFO("Hello %s", "World");
-        control.run();
+        //control.run();
+        ROS_INFO_STREAM(cost.trajectory_cost(x, u));
         ros::spinOnce();
         rate.sleep();
     }
@@ -117,6 +126,6 @@ bool initCost(Cost& cost, ros::NodeHandle& nh) {
 
     ROS_INFO_STREAM("Creating Dynamic Model using N: " << N << ", final state cost: " << Qf_x << " " << Qf_y << " " << Qf_theta << ", state cost: " << Q_x << " " << Q_y << " " << Q_theta << ", action control cost: " << R_v << " " << R_omega);
 
-    cost = Cost(N, Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega);
+    cost = Cost(N, Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega, 2.0, 1.5);
     return true;
 }

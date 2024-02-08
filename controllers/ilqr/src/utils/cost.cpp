@@ -10,12 +10,16 @@ Cost::Cost()
 Cost::Cost(int N, 
             float Qf_x, float Qf_y, float Qf_theta,
             float Q_x, float Q_y, float Q_theta,
-            float R_v, float R_omega)
+            float R_v, float R_omega,
+            float v_max, float omega_max)
 {
     _N = N;
 
     _Nx = 3;
     _Nu = 2;
+
+    _I_mu = MatrixXd::Identity(_p, _p);
+    _lambda = std::vector<float> (_p, 0);
 
     std::vector<double> Qf_values = {Qf_x, Qf_y, Qf_theta};
     std::vector<double> Q_values = {Q_x, Q_y, Q_theta};
@@ -43,6 +47,19 @@ Cost::Cost(int N,
     _l_u = Function("l_u", {x, u}, {l_u});
     _l_xx = Function("l_xx", {x, u}, {l_xx});
     _l_uu = Function("l_uu", {x, u}, {l_uu});
+
+    // Constraints Functions
+    SX c1 = v_max - u(0);
+    SX c2 = omega_max - u(1);
+
+    SX c = vertcat(c1, c2);
+
+    SX c_x = jacobian(c, x);
+    SX c_u = jacobian(c, u);
+
+    _c = Function("c", {x, u}, {c});
+    _c_x = Function("c_x", {x, u}, {c_x});
+    _c_u = Function("c_u", {x, u}, {c_u});
 }
 
 double Cost::trajectory_cost(MatrixXd x, MatrixXd u)
@@ -79,6 +96,14 @@ double Cost::trajectory_cost(MatrixXd x, MatrixXd u)
 
         input = {DM(xs), DM(us)};
         J += static_cast<double>(_l(input).at(0));
+
+        auto Jc = _c(input).at(0);
+
+        for (i=0; i<_p; i++)
+        {
+            auto j = static_cast<double>(Jc(i));
+            J += 0.5 * (j * _I_mu(i, i) * j + _lambda[i] * j);
+        }
     }
     
     for (i=0; i<_Nx; i++)
@@ -99,6 +124,17 @@ l_prime_t  Cost::get_l_prime(std::vector<DM> input)
     _l_prime.l_uu = Eigen::Matrix<double, 2, 2>::Map(DM::densify(_l_uu(input).at(0)).nonzeros().data(), 2, 2);
 
     return _l_prime;
+}
+
+std::vector<DM> Cost::get_c(std::vector<DM> input) {
+    return _c(input);
+}
+
+c_prime_t Cost::get_c_prime(std::vector<DM> input){
+    _c_prime.c_x = Eigen::Matrix<double, 3, 3>::Map(DM::densify(_c_x(input).at(0)).nonzeros().data(), 3, 3);
+    _c_prime.c_u = Eigen::Matrix<double, 2, 2>::Map(DM::densify(_c_u(input).at(0)).nonzeros().data(), 2, 2);
+
+    return _c_prime;
 }
 
 MatrixXd Cost::get_Qf()

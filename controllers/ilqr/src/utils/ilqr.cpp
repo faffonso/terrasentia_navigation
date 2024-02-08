@@ -45,7 +45,6 @@ iLQR::iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost,
 
     _path_pub = nh.advertise<nav_msgs::Path>("/terrasentia/path", 5);
     _cmd_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("/terrasentia/cmd_vel", 5);  
-
 }
 
 void iLQR::run()
