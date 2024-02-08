@@ -92,31 +92,13 @@ class RTinference:
         self.data = data
 
     def run(self):
-        print('-'*20)
-        print('lidar callback')
-        full_start_time = time.time()
-        
-        start_time = time.time()
         self.generate_image(self.data)
-        end_time = time.time()
-        print('Generate time: {:.4f} ms'.format((end_time - start_time)*1000))
-
-        start_time = time.time()
         self.image = self.get_image()
-        end_time = time.time()
-        print('Get time: {:.4f} ms'.format((end_time - start_time)*1000))
 
         self.response = self.inference(self.image)
-        full_end_time = time.time()
-        print('Inference full time: {:.4f} ms'.format((full_end_time - full_start_time)*1000))
 
-        print('image torch:', self.image.shape)
-        # Assuming self.image is a torch.Tensor, convert it to a NumPy array
         image_np = np.squeeze(self.image.detach().cpu().numpy())
-
-        # Convert the NumPy array to ROS format
         ros_image = self.bridge.cv2_to_imgmsg(image_np*250, encoding="passthrough")
-
         self.pub.publish(ros_image)
 
     def rt_inference_service(self, req):
@@ -183,9 +165,6 @@ class RTinference:
             return None
 
     def generate_image(self, data):
-
-        start_time = time.time()
-        
         lidar = data.ranges
         
         min_angle = np.deg2rad(0)
@@ -200,19 +179,11 @@ class RTinference:
         xl = [x*np.cos(angle[lidar.index(x)]) for x in lidar]
         yl = [y*np.sin(angle[lidar.index(y)]) for y in lidar]
 
-        end_time = time.time()
-        print('debug1 time: {:.4f} ms'.format((end_time - start_time)*1000))
-
-        start_time = time.time()
         # take all the "inf" off
         xl = [10.0 if value == 'inf' else value for value in xl]
         yl = [10.0 if value == 'inf' else value for value in yl] 
 
-        end_time = time.time()
-        print('debug2 time: {:.4f} ms'.format((end_time - start_time)*1000))
-
         POINT_WIDTH = 18
-        start_time = time.time()
         if len(xl) > 0:
             plt.cla()
             plt.plot(xl,yl, '.', markersize=POINT_WIDTH, color='black')
@@ -232,8 +203,6 @@ class RTinference:
 
             plt.savefig('temp_image')
 
-        end_time = time.time()
-        print('debug3 time: {:.4f} ms'.format((end_time - start_time)*1000))
 
     def get_image(self):
         image = cv2.imread("temp_image.png")
@@ -268,7 +237,7 @@ class RTinference:
         # Encerre a contagem de tempo após a inferência
         end_time = time.time()
 
-        print('Inference time: {:.4f} ms'.format((end_time - start_time)*1000))
+        #print('Inference time: {:.4f} ms'.format((end_time - start_time)*1000))
         
         # correct different format inputs
         predictions = predictions.to('cpu').cpu().detach().numpy().tolist()[0]
