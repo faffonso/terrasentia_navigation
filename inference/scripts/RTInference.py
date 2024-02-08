@@ -77,7 +77,7 @@ class RTinference:
             rospy.Service('/rt_inference_service', RTInferenceServiceShow, self.rt_inference_service)
         else:
             rospy.Service('/rt_inference_service', RTInferenceService, self.rt_inference_service)
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(20)
         while not rospy.is_shutdown():
             try:
                 self.run()
