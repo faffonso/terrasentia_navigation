@@ -85,7 +85,6 @@ class RTinference:
                 print(e)
                 pass
             
-
             rate.sleep()
 
     ############### ROS INTEGRATION ###############
@@ -114,17 +113,11 @@ class RTinference:
         print('image torch:', self.image.shape)
         # Assuming self.image is a torch.Tensor, convert it to a NumPy array
         image_np = np.squeeze(self.image.detach().cpu().numpy())
-        
-        print('image np:', image_np.shape)
-        # Convert to BGR format (assuming self.image is a single-channel image)
-        image_cv2 = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
 
-        print('image cv2:', image_cv2.shape)
         # Convert the NumPy array to ROS format
-        ros_image = self.bridge.cv2_to_imgmsg(image_cv2*250, encoding="passthrough")
+        ros_image = self.bridge.cv2_to_imgmsg(image_np*250, encoding="passthrough")
 
         self.pub.publish(ros_image)
-
 
     def rt_inference_service(self, req):
         rospy.loginfo(cf.yellow(f"Received request {req}"))
@@ -133,9 +126,7 @@ class RTinference:
         m1, m2, b1, b2 = self.response
         print(f'm1={m1:.2f}, m2={m2:.2f}, b1={b1:.2f}, b2={b2:.2f}')
 
-
-        image = self.image.to('cpu').cpu().detach().numpy()
-        image = image.flatten().tolist()
+        image = self.image.flatten().tolist()
         
         if SHOW:
             return m1, m2, b1, b2, image
@@ -212,7 +203,6 @@ class RTinference:
         end_time = time.time()
         print('debug1 time: {:.4f} ms'.format((end_time - start_time)*1000))
 
-
         start_time = time.time()
         # take all the "inf" off
         xl = [10.0 if value == 'inf' else value for value in xl]
@@ -220,8 +210,6 @@ class RTinference:
 
         end_time = time.time()
         print('debug2 time: {:.4f} ms'.format((end_time - start_time)*1000))
-
-
 
         POINT_WIDTH = 18
         start_time = time.time()
@@ -246,8 +234,6 @@ class RTinference:
 
         end_time = time.time()
         print('debug3 time: {:.4f} ms'.format((end_time - start_time)*1000))
-
-
 
     def get_image(self):
         image = cv2.imread("temp_image.png")
@@ -324,7 +310,6 @@ class RTinference:
         b2 = -q2/w2
 
         return [m1, m2, b1, b2]
-
 
 ############### MAIN ###############
 
