@@ -1,0 +1,8 @@
+<launch>
+    <!-- NMPC Node -->
+    <rosparam file="$(find nmpc)/config/nmpc_params.yaml" command="load"/>
+    <node pkg="nmpc" type="nmpc_node.py" name="nmpc_node" output="screen"/>
+
+    <!-- Wp Gen -->
+    <include file="$(find wp_gen)/launch/wp_gen_test.launch" />
+</launch>
