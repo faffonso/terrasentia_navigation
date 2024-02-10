@@ -93,7 +93,7 @@ class Cost
          */
         l_prime_t  get_l_prime(std::vector<DM> input);
 
-        std::vector<casadi::DM> get_c(std::vector<DM> input);
+        MatrixXd get_c(std::vector<DM> input);
         c_prime_t get_c_prime(std::vector<DM> input);
 
         /**
@@ -103,7 +103,7 @@ class Cost
          * @param u Action control
          * @return double 
          */
-        double trajectory_cost(MatrixXd x, MatrixXd u);
+        double trajectory_cost(MatrixXd x, MatrixXd u, std::vector<float>& lambda);
 
         /**
          * @brief Get the Qf object

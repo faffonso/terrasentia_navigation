@@ -19,7 +19,7 @@ Cost::Cost(int N,
     _Nu = 2;
 
     _I_mu = MatrixXd::Identity(_p, _p);
-    _lambda = std::vector<float> (_p, 0);
+    _lambda = std::vector<float>(_p, 0);
 
     std::vector<double> Qf_values = {Qf_x, Qf_y, Qf_theta};
     std::vector<double> Q_values = {Q_x, Q_y, Q_theta};
@@ -62,7 +62,7 @@ Cost::Cost(int N,
     _c_u = Function("c_u", {x, u}, {c_u});
 }
 
-double Cost::trajectory_cost(MatrixXd x, MatrixXd u)
+double Cost::trajectory_cost(MatrixXd x, MatrixXd u, std::vector<float>& lambda)
 {
     std::size_t Nx = x.rows();
     std::size_t Nu = u.rows();
@@ -102,7 +102,9 @@ double Cost::trajectory_cost(MatrixXd x, MatrixXd u)
         for (i=0; i<_p; i++)
         {
             auto j = static_cast<double>(Jc(i));
-            J += 0.5 * (j * _I_mu(i, i) * j + _lambda[i] * j);
+            //J += 0.5 * (j * _I_mu(i, i) * j + lambda[i] * j);
+
+            lambda[i] = std::max(0.0, lambda[i] + j);
         }
     }
     
@@ -110,7 +112,7 @@ double Cost::trajectory_cost(MatrixXd x, MatrixXd u)
             xs.at(i) = (float)x(_N, i);
 
     input = {DM(xs)};
-    J += static_cast<double>(_lf(input).at(0));
+    //J += static_cast<double>(_lf(input).at(0));
 
     return J;
 }
@@ -126,12 +128,12 @@ l_prime_t  Cost::get_l_prime(std::vector<DM> input)
     return _l_prime;
 }
 
-std::vector<DM> Cost::get_c(std::vector<DM> input) {
-    return _c(input);
+MatrixXd Cost::get_c(std::vector<DM> input) {
+    return Eigen::Matrix<double, 2, 1>::Map(DM::densify(_c(input).at(0)).nonzeros().data(), 2, 1);
 }
 
 c_prime_t Cost::get_c_prime(std::vector<DM> input){
-    _c_prime.c_x = Eigen::Matrix<double, 3, 3>::Map(DM::densify(_c_x(input).at(0)).nonzeros().data(), 3, 3);
+    _c_prime.c_x = Eigen::Matrix<double, 3, 2>::Map(DM::densify(_c_x(input).at(0)).nonzeros().data(), 3, 2);
     _c_prime.c_u = Eigen::Matrix<double, 2, 2>::Map(DM::densify(_c_u(input).at(0)).nonzeros().data(), 2, 2);
 
     return _c_prime;

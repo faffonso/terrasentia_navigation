@@ -27,6 +27,7 @@ iLQR::iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost,
     _ks = MatrixXd::Zero(_N, _Nu);
     _Ks = Tensor<float, 3>(_N, _Nu, _Nx);
 
+    _lambda = std::vector<float> (_p, 0);
     _alphas = std::vector<float>(10);
     for (int i = 0; i < 10; ++i) 
         _alphas[i] = std::pow(1.1, -std::pow(i, 2));
@@ -85,7 +86,12 @@ void iLQR::run()
         us(n, 1) = 0.0;
     }
 
+    //ROS_INFO_STREAM("Initial State" << _x0);
+    //ROS_INFO_STREAM("Initial action control" << us);
     this->fit(us);
+
+    _x0 = _x;
+    this->_rollout();
 
     geometry_msgs::PoseStamped pose;
 
@@ -93,10 +99,10 @@ void iLQR::run()
     _path_msg.header.frame_id = _frame_id;
     for (int n=0; n<_N; n++)
     {
-        geometry_msgs::Quaternion q_euler = tf::createQuaternionMsgFromRollPitchYaw(0.0, 0.0, _xs(n, 2) + _xref(2));
+        geometry_msgs::Quaternion q_euler = tf::createQuaternionMsgFromRollPitchYaw(0.0, 0.0, _xs(n, 2));
 
-        pose.pose.position.x = _xs(n, 0) + _xref(0);
-        pose.pose.position.y = _xs(n, 1) + _xref(1);
+        pose.pose.position.x = _xs(n, 0);
+        pose.pose.position.y = _xs(n, 1);
 
         pose.pose.orientation = q_euler;
 
@@ -115,11 +121,12 @@ void iLQR::run()
 
 void iLQR::fit(MatrixXd us)
 {
+    VectorXd lambda = VectorXd(_p);
     _us = us;
 
     this->_rollout();
 
-    _J = _cost->trajectory_cost(_xs, _us);
+    _J = _cost->trajectory_cost(_xs, _us, _lambda);
     //ROS_INFO_STREAM("Trajectory cost: " << _J);
 
     int max_iter = 100;
@@ -134,7 +141,9 @@ void iLQR::fit(MatrixXd us)
         regu = std::min(regu, max_regu);
         regu = std::max(regu, min_regu);
 
-        this->_backward_pass(regu); 
+        lambda << _lambda[0], _lambda[1];
+        //ROS_INFO_STREAM("Lambda" << lambda);
+        this->_backward_pass(regu, lambda); 
 
         if (std::abs(_delta_J) < tol)
         {
@@ -145,7 +154,7 @@ void iLQR::fit(MatrixXd us)
         for (float alpha : _alphas)
         {
             this->_forward_pass(alpha);
-            _J_new = _cost->trajectory_cost(_xs_new, _us_new);
+            _J_new = _cost->trajectory_cost(_xs_new, _us_new, _lambda);
 
             //ROS_INFO_STREAM("Trying converge " << _J_new << " on " << _J);
 
@@ -202,22 +211,24 @@ void iLQR::_forward_pass(float alpha)
         auto aux = static_cast<std::vector<float>>(result.at(0));
         _xs_new.row(n+1) << aux[0], aux[1], aux[2];
 
-        //ROS_INFO_STREAM("Xs: " << _xs_new.row(n+1) << "(n=" << n << ")");
-        //ROS_INFO_STREAM("Us: " << _us_new.row(n) << "(n=" << n << ")");
+        ROS_INFO_STREAM("Xs: " << _xs_new.row(n+1) << "(n=" << n << ")");
+        ROS_INFO_STREAM("Us: " << _us_new.row(n) << "(n=" << n << ")");
     }
 }
 
-void iLQR::_backward_pass(float regu)
+void iLQR::_backward_pass(float regu, VectorXd lambda)
 {    
     int n, i, j;
     double J=0;
 
     f_prime_t f_prime;
     l_prime_t l_prime;
+    c_prime_t c_prime;
 
     MatrixXd A, B, k, K;
     MatrixXd Q_x, Q_u, Q_xx, Q_uu, Q_ux; 
     MatrixXd Q_uu_reg, Q_ux_reg;
+    MatrixXd c;
 
     std::vector<float> xs(_xs.cols());
     std::vector<float> us(_us.cols());
@@ -229,6 +240,8 @@ void iLQR::_backward_pass(float regu)
     MatrixXd S = Qf;
 
     MatrixXd regu_I = regu * MatrixXd::Identity(3, 3);
+    MatrixXd I_mu = MatrixXd::Identity(_p, _p);
+
 
     for (n=_N-1; n>=0; n--)
     {
@@ -241,6 +254,8 @@ void iLQR::_backward_pass(float regu)
         input = {DM(xs), DM(us)};
         f_prime = _dynamic->get_f_prime(input);
         l_prime = _cost->get_l_prime(input);
+        c_prime = _cost->get_c_prime(input);
+        c = _cost->get_c(input);
 
         Q_x = l_prime.l_x + s * f_prime.f_x;
         Q_u = l_prime.l_u + s * f_prime.f_u;
@@ -252,11 +267,17 @@ void iLQR::_backward_pass(float regu)
         Q_uu = l_prime.l_uu + f_prime.f_u.transpose() * S * f_prime.f_u;
         Q_ux = f_prime.f_u.transpose() * S * f_prime.f_x;
 
+        // Q_x += c_prime.c_x * I_mu * c + c_prime.c_x * lambda;
+        // Q_u += c_prime.c_u * I_mu * c + c_prime.c_u * lambda;
+        // Q_xx += c_prime.c_x * I_mu * c_prime.c_x.transpose();
+        // Q_uu += c_prime.c_u * I_mu * c_prime.c_u.transpose();
+        // Q_ux += c_prime.c_u * I_mu * c_prime.c_x.transpose();
+
         Q_uu_reg = Q_uu + f_prime.f_u.transpose() * regu_I * f_prime.f_u;
         Q_ux_reg = Q_ux + f_prime.f_u.transpose() * regu_I * f_prime.f_x;
 
-        k = - Q_uu_reg.inverse() * Q_u;
-        K = - Q_uu_reg.inverse() * Q_ux;
+        k = - Q_uu.inverse() * Q_u;
+        K = - Q_uu.inverse() * Q_ux;
 
         _ks.row(n) = k.transpose();
         for (i=0; i<_Nu; i++)

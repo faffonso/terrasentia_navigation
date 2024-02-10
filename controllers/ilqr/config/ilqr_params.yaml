@@ -10,16 +10,16 @@ controller/cost:
   N: *N
   
   # Weight Matrices
-  Qf_x:     5.0
-  Qf_y:     5.0
-  Qf_theta: 3.5
+  Qf_x:     1.0
+  Qf_y:     1.0
+  Qf_theta: 1.0
 
-  Q_x:      5.0
-  Q_y:      5.0
-  Q_theta:  3.5 
-
-  R_v:      0.5
-  R_omega:  0.1
+  Q_x:      1.0
+  Q_y:      1.0
+  Q_theta:  1.0
+  
+  R_v:      1.0
+  R_omega:  1.0
 
 controller/dynamics:
   dt: *dt

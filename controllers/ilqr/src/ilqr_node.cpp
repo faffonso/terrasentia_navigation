@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "ilqr_node");
     ros::NodeHandle nh;
 
-    ros::Rate rate(100);
+    ros::Rate rate(10);
 
     Dynamics dynamic;
     if (!initDynamics(dynamic, nh)) {
@@ -44,10 +44,10 @@ int main(int argc, char** argv)
     Eigen::MatrixXd u(N, 2);
     u.setOnes();
 
+    std::vector<float> lambda = std::vector<float> (2, 0);
+
     while (ros::ok()) {
-        //ROS_INFO("Hello %s", "World");
-        //control.run();
-        ROS_INFO_STREAM(cost.trajectory_cost(x, u));
+        control.run();
         ros::spinOnce();
         rate.sleep();
     }

@@ -40,7 +40,8 @@ class iLQR
     protected:
         int _N,     // Precition horizon size
             _Nx=3,  // State vector size
-            _Nu=2;  // Action control vector size
+            _Nu=2,  // Action control vector size
+            _p=2;   // Number os Constraints
         
         float _dt,      // Sampling time [s]
             _v_max,     // Max linear velocity [m/s]
@@ -52,8 +53,6 @@ class iLQR
 
         std::string _frame_id,  // Global frame id
                 _odom_topic;    // Odometry topic
-
-
 
         // Child objects
         Dynamics* _dynamic;
@@ -77,7 +76,7 @@ class iLQR
         // Auxiliar Matrices and Vectors to comunicate between methods
         MatrixXd _u0, _ks, _xs, _us, _xs_new, _us_new;
         Tensor<float, 3> _Ks;
-        std::vector<float> _alphas;
+        std::vector<float> _alphas, _lambda;
 
         /**
          * @brief Simulate the system using (x_0, us_new) to get the trajectory xs_new
@@ -94,7 +93,7 @@ class iLQR
          * 
          * @param regu Regularization term
          */
-        void _backward_pass(float regu);
+        void _backward_pass(float regu, VectorXd lambda);
 
         /**
          * @brief Simulate the system using (x_0, us) to get the trajectory xs
