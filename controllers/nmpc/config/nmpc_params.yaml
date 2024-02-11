@@ -1,21 +1,22 @@
 ## Nonlinear Model Predictive Control Params
 controller/NMPC: 
 # Optimization Setup
-  dt: 0.1 #s
-  N:  15
+  dt: 0.1 # Sampling time [s]
+  N:  15  # Prediction Horizon
 
   # Weight Matrices
-  Q_x:      1.0
-  Q_y:      1.0
-  Q_theta:  1.0 
+  Q_x:      1.0 # X cost
+  Q_y:      1.0 # Y cost
+  Q_theta:  1.0 # Theta cost
 
-  R_v:      1.0
-  R_omega:  1.0
+  R_v:      1.0 # Linear speed cost
+  R_omega:  1.0 # Angular speed cost
 
   # Boundary Action Control
-  v_max:      0.8 # m/s
-  omega_max:  1.5 # rad/s
+  v_max:      0.8 # [m/s]
+  omega_max:  1.5 # [rad/s]
 
 ## Odometry Params
 odom:
+  topic: "/terrasentia/will/odom"
   frame_id: "/terrasentia/will/odom"
