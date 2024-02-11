@@ -2,13 +2,13 @@
 
 from __future__ import print_function
 
-from wp_gen.srv import WpGen, WpGenResponse, WpGenRequest
+from wp_gen.srv import RTInference, RTInferenceResponse, RTInferenceRequest
 
 import rospy
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 import numpy as np
-import matplotlib.pyplot as plt
+import colorful as cf
 import math
 
 from nav_msgs.msg import Odometry
@@ -40,7 +40,7 @@ class Wp_gen():
         self.img_width = img_width
 
         odom_topic = rospy.get_param("wp_gen/odom/topic")
-        frame_id = rospy.get_param("wp_gen/odom/frane_id")
+        frame_id = rospy.get_param("wp_gen/odom/frame_id")
 
 
         self.odom_sub = rospy.Subscriber(odom_topic, Odometry, self.odom_callback)
@@ -52,15 +52,19 @@ class Wp_gen():
         
         self.D = D
 
+        rospy.loginfo(cf.green(f"Client created!"))
 
-    def run(self, verbose=True):
-        rospy.wait_for_service('WpGen')
+
+    def run(self, show=False, verbose=False):
+        rospy.wait_for_service('RTInference')
+        rospy.loginfo(cf.orange(f"Send request to server!"))
 
         try:
-            service_proxy = rospy.ServiceProxy('WpGen', WpGen)
-            
-            response = service_proxy()
-            print(response)
+            service_proxy = rospy.ServiceProxy('RTInference', RTInference)
+            response = service_proxy(show)
+            rospy.loginfo(cf.yellow(f"Response received!"))
+            if (verbose == True):
+                rospy.loginfo(response)
 
         except rospy.ServiceException as e:
             print("Service call failed:", e)
@@ -71,14 +75,15 @@ class Wp_gen():
         m2 = response.right_line.m
         c2 = response.right_line.b
 
+        rospy.loginfo(cf.orange(f'Line1 m={m1}, b={c1}'))
+        rospy.loginfo(cf.orange(f'Line2 m={m2}, b={c2}'))
+
         x, y = self.get_target(m1, m2, c1, c2)
 
         x *= self.row_width / self.img_width
         y *= self.row_height / self.img_height
 
-        y = 4.5
-        x = -0.7
-
+        rospy.loginfo(cf.orange(f'Y={y}, X={x}'))
 
         q = (
             self.odom_msg.pose.pose.orientation.x,
@@ -88,15 +93,6 @@ class Wp_gen():
         _, _, heading_global = euler_from_quaternion(q)
 
         heading = np.arctan2(x, y)
-
-        print("Y Values")
-        print(f'Global x {self.odom_msg.pose.pose.position.x}')
-        print(f'Global y {self.odom_msg.pose.pose.position.y}')
-        print(f'x * cos {x * np.cos(heading_global)}')
-        print(f'x * sin {x * np.sin(heading_global)}')
-        print(f'y * cos {y * np.cos(heading_global)}')
-        print(f'y * sin {y * np.sin(heading_global)}')
-
 
         self.goal_msg.pose.position.x = self.odom_msg.pose.pose.position.x + x * np.sin(heading_global) + y * np.cos(heading_global)
         self.goal_msg.pose.position.y = self.odom_msg.pose.pose.position.y - (x * np.cos(heading_global) - y * np.sin(heading_global))

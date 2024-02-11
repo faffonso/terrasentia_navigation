@@ -5,12 +5,12 @@ controller/NMPC:
   N:  15
 
   # Weight Matrices
-  Q_x:      5.0
-  Q_y:      5.0
-  Q_theta:  3.5 
+  Q_x:      1.0
+  Q_y:      1.0
+  Q_theta:  1.0 
 
-  R_v:      0.5
-  R_omega:  0.1
+  R_v:      1.0
+  R_omega:  1.0
 
   # Boundary Action Control
   v_max:      0.8 # m/s

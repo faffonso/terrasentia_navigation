@@ -118,7 +118,7 @@ class NMPC:
         self.cmd_vel.twist.angular.z = u[0][1]
 
         self.path_publisher.publish(path_msg)
-        #self.cmd_vel_publisher.publish(self.cmd_vel)
+        self.cmd_vel_publisher.publish(self.cmd_vel)
 
         end_time = time.time()
         elapsed_time = end_time - start_time

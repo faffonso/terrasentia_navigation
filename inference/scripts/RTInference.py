@@ -22,8 +22,9 @@ import rospy
 from std_msgs.msg import Float32
 from std_srvs.srv import Empty
 from sensor_msgs.msg import LaserScan
-from inference.srv import RTInferenceService
-from inference.srv import RTInferenceServiceShow
+
+from wp_gen.srv import RTInference, RTInferenceResponse, RTInferenceRequest
+from wp_gen.msg import CropLine
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
@@ -65,19 +66,17 @@ class RTinference:
         ############### RUN ###############
         # Set up the ROS subscriber
         self.data = None
-        rospy.init_node('RTinference', anonymous=True)
+        rospy.init_node('RTinference_node')
         rospy.Subscriber('/terrasentia/scan', LaserScan, self.lidar_callback)
-        rospy.loginfo(cf.green("Server is ready to receive requests"))
 
         self.pub = rospy.Publisher('/lidar_plot', Image, queue_size=10)
         self.bridge = CvBridge()
 
         # Set up the ROS service server
-        if SHOW:
-            rospy.Service('/rt_inference_service', RTInferenceServiceShow, self.rt_inference_service)
-        else:
-            rospy.Service('/rt_inference_service', RTInferenceService, self.rt_inference_service)
-        rate = rospy.Rate(20)
+        rospy.Service('RTInference', RTInference, self.rt_inference_service)
+        rospy.loginfo(cf.green("Server is ready to receive requests"))
+
+        rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             try:
                 self.run()
@@ -108,12 +107,15 @@ class RTinference:
         m1, m2, b1, b2 = self.response
         print(f'm1={m1:.2f}, m2={m2:.2f}, b1={b1:.2f}, b2={b2:.2f}')
 
-        image = self.image.flatten().tolist()
+        line1 = CropLine(m1, b1)
+        line2 = CropLine(m2, b2)
         
-        if SHOW:
-            return m1, m2, b1, b2, image
+        if req.show:
+            image = self.image.flatten().tolist()
+            return line1, line2, image
         else:
-            return m1, m2, b1, b2
+            image = []
+            return line1, line2, image
 
     ############### MODEL LOAD ############### 
     def load_model(self):
