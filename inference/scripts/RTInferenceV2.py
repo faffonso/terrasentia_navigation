@@ -24,7 +24,7 @@ from std_srvs.srv import Empty
 from sensor_msgs.msg import LaserScan
 from inference.srv import RTInferenceService
 from inference.srv import RTInferenceServiceShow
-from inferrence.msg import FloatArray
+from inference.msg import FloatArray
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
