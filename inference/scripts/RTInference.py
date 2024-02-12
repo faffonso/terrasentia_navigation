@@ -22,9 +22,8 @@ import rospy
 from std_msgs.msg import Float32
 from std_srvs.srv import Empty
 from sensor_msgs.msg import LaserScan
-
-from wp_gen.srv import RTInference, RTInferenceResponse, RTInferenceRequest
-from wp_gen.msg import CropLine
+from inference.srv import RTInferenceService
+from inference.srv import RTInferenceServiceShow
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
@@ -66,17 +65,19 @@ class RTinference:
         ############### RUN ###############
         # Set up the ROS subscriber
         self.data = None
-        rospy.init_node('RTinference_node')
+        rospy.init_node('RTinference', anonymous=True)
         rospy.Subscriber('/terrasentia/scan', LaserScan, self.lidar_callback)
+        rospy.loginfo(cf.green("Server is ready to receive requests"))
 
         self.pub = rospy.Publisher('/lidar_plot', Image, queue_size=10)
         self.bridge = CvBridge()
 
         # Set up the ROS service server
-        rospy.Service('RTInference', RTInference, self.rt_inference_service)
-        rospy.loginfo(cf.green("Server is ready to receive requests"))
-
-        rate = rospy.Rate(10)
+        if SHOW:
+            rospy.Service('/rt_inference_service', RTInferenceServiceShow, self.rt_inference_service)
+        else:
+            rospy.Service('/rt_inference_service', RTInferenceService, self.rt_inference_service)
+        rate = rospy.Rate(20)
         while not rospy.is_shutdown():
             try:
                 self.run()
@@ -91,14 +92,17 @@ class RTinference:
         self.data = data
 
     def run(self):
-        self.generate_image(self.data)
-        self.image = self.get_image()
+        if self.data is not None:
+            self.generate_image(self.data)
+            self.image = self.get_image()
 
-        self.response = self.inference(self.image)
+            self.response = self.inference(self.image)
 
-        image_np = np.squeeze(self.image.detach().cpu().numpy())
-        ros_image = self.bridge.cv2_to_imgmsg(image_np*250, encoding="passthrough")
-        self.pub.publish(ros_image)
+            image_np = np.squeeze(self.image.detach().cpu().numpy())
+            ros_image = self.bridge.cv2_to_imgmsg(image_np*250, encoding="passthrough")
+            self.pub.publish(ros_image)
+        else:
+            pass
 
     def rt_inference_service(self, req):
         rospy.loginfo(cf.yellow(f"Received request {req}"))
@@ -107,15 +111,12 @@ class RTinference:
         m1, m2, b1, b2 = self.response
         print(f'm1={m1:.2f}, m2={m2:.2f}, b1={b1:.2f}, b2={b2:.2f}')
 
-        line1 = CropLine(m1, b1)
-        line2 = CropLine(m2, b2)
+        image = self.image.flatten().tolist()
         
-        if req.show:
-            image = self.image.flatten().tolist()
-            return line1, line2, image
+        if SHOW:
+            return m1, m2, b1, b2, image
         else:
-            image = []
-            return line1, line2, image
+            return m1, m2, b1, b2
 
     ############### MODEL LOAD ############### 
     def load_model(self):
@@ -168,7 +169,6 @@ class RTinference:
 
     def generate_image(self, data):
         lidar = data.ranges
-        
         min_angle = np.deg2rad(0)
         max_angle = np.deg2rad(180) # lidar range
         angle = np.linspace(min_angle, max_angle, len(lidar), endpoint = False)
