@@ -84,6 +84,7 @@ class Wp_gen():
         #x *= self.row_width / self.img_width
         #y *= self.row_height / self.img_height
 
+        x -= 0.6
         rospy.loginfo(cf.orange(f'Y={y}, X={x}'))
 
         q = (
