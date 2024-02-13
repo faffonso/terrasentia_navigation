@@ -7,7 +7,7 @@ import rospy
 import time
 
 from nav_msgs.msg import Odometry, Path
-from geometry_msgs.msg import TwistStamped, PoseStamped
+from geometry_msgs.msg import TwistStamped, PoseStamped, Twist
 
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
@@ -27,11 +27,12 @@ class NMPC:
         self.goal_subscriber = rospy.Subscriber("/terrasentia/goal", PoseStamped, self.goal_callback)
 
         self.path_publisher     = rospy.Publisher("/terrasentia/path", Path, queue_size=1)
-        self.cmd_vel_publisher  = rospy.Publisher("/terrasentia/cmd_vel", TwistStamped, queue_size=10)
+        self.cmd_vel_publisher  = rospy.Publisher("/terrasentia/cmd_vel", Twist, queue_size=10)
 
         self.odom    = Odometry()
         self.goal    = PoseStamped()
-        self.cmd_vel = TwistStamped()
+        # self.cmd_vel = TwistStamped()
+        self.cmd_vel = Twist()
 
         # Optimization struct
         opti = ca.Opti()
@@ -116,8 +117,8 @@ class NMPC:
             pose = self.pose_from_state(xi)
             path_msg.poses.append(pose)
 
-        self.cmd_vel.twist.linear.x = u[0][0]
-        self.cmd_vel.twist.angular.z = u[0][1]
+        self.cmd_vel.linear.x = u[0][0]
+        self.cmd_vel.angular.z = u[0][1]
 
         self.path_publisher.publish(path_msg)
         self.cmd_vel_publisher.publish(self.cmd_vel)

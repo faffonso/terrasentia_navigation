@@ -89,11 +89,37 @@ class RTinference:
 
     def run(self):
         self.generate_image(self.data)
-        self.image = self.get_image()
+        self.image, raw_image = self.get_image()
 
         self.response = self.inference(self.image)
 
-        image_np = np.squeeze(self.image.detach().cpu().numpy())
+        m1 = self.response[0]
+        m2 = self.response[1]
+        b1 = self.response[2]
+        b2 = self.response[3]
+
+        # Calculate the endpoints of the line
+        x11 = 0
+        y11 = int(m1 * x11 + b1)
+
+        x12 = raw_image.shape[1]  # Width of the image
+        y2 = int(m1 * x12 + b1)
+
+        # Draw the line on the image
+        line_color = (0, 255, 0)  # Green color
+        line_thickness = 2
+        cv2.line(raw_image, (x11, y11), (x12, y12), line_color, line_thickness)
+
+        # Calculate the endpoints of the line
+        x21 = 0
+        y21 = int(m2 * x21 + b2)
+
+        x22 = raw_image.shape[1]  # Width of the image
+        y22 = int(m2 * x22 + b2)
+
+        cv2.line(raw_image, (x22, y22), (x22, y22), line_color, line_thickness)
+
+        image_np = np.squeeze(raw_image.detach().cpu().numpy())
         ros_image = self.bridge.cv2_to_imgmsg(image_np*250, encoding="passthrough")
         self.pub_img.publish(ros_image)
         self.pub_mb.publish(self.response)
@@ -201,13 +227,15 @@ class RTinference:
         image = image[:,:, 1]
         image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_LINEAR)
 
+        raw_image = image
+
         # add one more layer to image: [1, 1, 224, 224] as batch size
         image = np.expand_dims(image, axis=0)
         image = np.expand_dims(image, axis=0)
 
         # convert to torch
         image = torch.from_numpy(image).float()
-        return image
+        return image, raw_image
 
     ############### INFERENCE AND PLOT ##############
 

@@ -3,7 +3,7 @@ wp_gen/img:
   row_width: 2.0    # [m]
   img_height: 244   # [px]
   img_width: 244    # [px]
-  D: 1.0            # Waypoint Distance [m]
+  D: 1.5            # Waypoint Distance [m]
 
 wp_gen/odom:
   topic: "/terrasentia/will/odom"

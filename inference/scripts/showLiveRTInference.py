@@ -14,6 +14,7 @@ from inference.srv import RTInferenceService
 from inference.srv import RTInferenceServiceShow
 #~/catkin_ws/src/terrasentia_navigation/inference/scripts
 
+
 global SHOW
 SHOW = True
 
@@ -36,10 +37,11 @@ class clientRTInference:
                 response = rt_inference_service()
                 
                 # Access the response fields
-                m1 = response.m1
-                m2 = response.m2
-                b1 = response.b1
-                b2 = response.b2
+                m1 = response.left_line.m
+                b1 = response.left_line.b
+
+                m2 = response.right_line.m
+                b2 = response.right_line.b
                 if SHOW:
                     image = response.image
                 else: 

@@ -22,8 +22,9 @@ import rospy
 from std_msgs.msg import Float32
 from std_srvs.srv import Empty
 from sensor_msgs.msg import LaserScan
-from inference.srv import RTInferenceService
-from inference.srv import RTInferenceServiceShow
+
+from wp_gen.srv import RTInference, RTInferenceResponse, RTInferenceRequest
+from wp_gen.msg import CropLine
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
@@ -65,19 +66,17 @@ class RTinference:
         ############### RUN ###############
         # Set up the ROS subscriber
         self.data = None
-        rospy.init_node('RTinference', anonymous=True)
+        rospy.init_node('RTinference_node')
         rospy.Subscriber('/terrasentia/scan', LaserScan, self.lidar_callback)
-        rospy.loginfo(cf.green("Server is ready to receive requests"))
 
         self.pub = rospy.Publisher('/lidar_plot', Image, queue_size=10)
         self.bridge = CvBridge()
 
         # Set up the ROS service server
-        if SHOW:
-            rospy.Service('/rt_inference_service', RTInferenceServiceShow, self.rt_inference_service)
-        else:
-            rospy.Service('/rt_inference_service', RTInferenceService, self.rt_inference_service)
-        rate = rospy.Rate(20)
+        rospy.Service('RTInference', RTInference, self.rt_inference_service)
+        rospy.loginfo(cf.green("Server is ready to receive requests"))
+
+        rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             try:
                 self.run()
@@ -92,17 +91,14 @@ class RTinference:
         self.data = data
 
     def run(self):
-        if self.data is not None: # delay to init self.data
+        if self.data is not None: # check for consistency
             self.generate_image(self.data)
-            self.image = self.get_image()
+            self.image, raw_image = self.get_image()
 
             self.response = self.inference(self.image)
 
-            image_np = np.squeeze(self.image.detach().cpu().numpy())
-            ros_image = self.bridge.cv2_to_imgmsg(image_np*250, encoding="passthrough")
+            ros_image = self.plot(self.response, raw_image)
             self.pub.publish(ros_image)
-        else:
-            pass
 
     def rt_inference_service(self, req):
         rospy.loginfo(cf.yellow(f"Received request {req}"))
@@ -111,12 +107,15 @@ class RTinference:
         m1, m2, b1, b2 = self.response
         print(f'm1={m1:.2f}, m2={m2:.2f}, b1={b1:.2f}, b2={b2:.2f}')
 
-        image = self.image.flatten().tolist()
+        line1 = CropLine(m1, b1)
+        line2 = CropLine(m2, b2)
         
-        if SHOW:
-            return m1, m2, b1, b2, image
+        if req.show:
+            image = self.image.flatten().tolist()
+            return line1, line2, image
         else:
-            return m1, m2, b1, b2
+            image = []
+            return line1, line2, image
 
     ############### MODEL LOAD ############### 
     def load_model(self):
@@ -169,6 +168,7 @@ class RTinference:
 
     def generate_image(self, data):
         lidar = data.ranges
+        
         min_angle = np.deg2rad(0)
         max_angle = np.deg2rad(180) # lidar range
         angle = np.linspace(min_angle, max_angle, len(lidar), endpoint = False)
@@ -216,8 +216,10 @@ class RTinference:
 
         # crop image to 224x224 in the pivot point (112 to each side)
         # image = image[100:400, :, :]
-        image = image[:,:, 1]
         image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_LINEAR)
+
+        raw_image = image
+        image = image[:,:, 1]
 
         # add one more layer to image: [1, 1, 224, 224] as batch size
         image = np.expand_dims(image, axis=0)
@@ -225,7 +227,7 @@ class RTinference:
 
         # convert to torch
         image = torch.from_numpy(image).float()
-        return image
+        return image, raw_image
 
     ############### INFERENCE AND PLOT ##############
 
@@ -281,6 +283,38 @@ class RTinference:
         b2 = -q2/w2
 
         return [m1, m2, b1, b2]
+
+    def plot(self, response, raw_image):
+        m1 = response[0]
+        m2 = response[1]
+        b1 = response[2]
+        b2 = response[3]
+
+        # Calculate the endpoints of the line
+        x11 = 0
+        y11 = int(m1 * x11 + b1)
+
+        x12 = raw_image.shape[1]  # Width of the image
+        y12 = int(m1 * x12 + b1)
+
+        # Draw the line on the image
+        line_color = (0, 0, 255)  
+        line_thickness = 2
+        cv2.line(raw_image, (x11, y11), (x12, y12), line_color, line_thickness)
+
+        # Calculate the endpoints of the line
+        x21 = 0
+        y21 = int(m2 * x21 + b2)
+
+        x22 = raw_image.shape[1]  # Width of the image
+        y22 = int(m2 * x22 + b2)
+
+        cv2.line(raw_image, (x21, y21), (x22, y22), line_color, line_thickness)
+
+        #image_np = np.squeeze(raw_image) #.detach().cpu().numpy())
+        ros_image = self.bridge.cv2_to_imgmsg(raw_image, encoding="passthrough")
+
+        return ros_image
 
 ############### MAIN ###############
 

@@ -56,7 +56,7 @@ class Wp_gen():
         rospy.loginfo(cf.green(f"Client created!"))
 
 
-    def run(self, show=False, verbose=False):
+    def run(self, show=True, verbose=False):
         rospy.wait_for_service('RTInference')
         rospy.loginfo(cf.orange(f"Send request to server!"))
 
