@@ -55,7 +55,7 @@ class Wp_gen():
         rospy.loginfo(cf.green(f"Client created!"))
 
 
-    def run(self, show=False, verbose=False):
+    def run(self, show=True, verbose=False):
         rospy.wait_for_service('RTInference')
         rospy.loginfo(cf.orange(f"Send request to server!"))
 
@@ -79,10 +79,13 @@ class Wp_gen():
         rospy.loginfo(cf.orange(f'Line2 m={m2}, b={c2}'))
 
         x, y = self.get_target(m1, m2, c1, c2)
-
+        #print(f'x={x:.2f}, y:{y:.2f}')
+        #print(f'rw:{self.row_width}, rh:{self.row_height}, iw:{self.img_width}, ih:{self.img_height}')
         x *= self.row_width / self.img_width
         y *= self.row_height / self.img_height
 
+        x -= 0.5
+        x *= 2
         rospy.loginfo(cf.orange(f'Y={y}, X={x}'))
 
         q = (

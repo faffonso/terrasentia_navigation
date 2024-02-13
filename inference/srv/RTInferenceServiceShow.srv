@@ -1,12 +1,7 @@
-# RTInferenceServiceShow.srv
+# RTInferenceShow.srv
 
-# Request message
-# Empty request for this example, modify as needed
+bool show
 ---
-
-# Response message
-float32 m1
-float32 m2
-float32 b1
-float32 b2
+CropLine left_line
+CropLine right_line
 float32[] image
