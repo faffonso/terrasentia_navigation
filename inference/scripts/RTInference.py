@@ -92,7 +92,7 @@ class RTinference:
         self.data = data
 
     def run(self):
-        if self.data is not None:
+        if self.data is not None: # delay to init self.data
             self.generate_image(self.data)
             self.image = self.get_image()
 
