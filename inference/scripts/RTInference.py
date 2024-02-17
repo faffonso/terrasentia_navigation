@@ -33,7 +33,7 @@ device = torch.device("cpu")
 
 ############ GLOBAL PARAMS ############
 global runid
-runid = '02-02-2024_00-45-55'
+runid = '16-02-2024_19-40-59'
 global SHOW
 SHOW = True
 
@@ -54,9 +54,10 @@ class RTinference:
             self.mean = [result['mean0'], result['mean1'], result['mean2'], result['mean3']]
             self.std = [result['std0'], result['std1'], result['std2'], result['std3']]
         else:
-            print("No data found for the specified id.")
+            print(cf.red(f"No data found for the specified id.\n {runid}"))
             self.mean = None
             self.std = None
+            exit()
 
         ########## PLOT ##########
         self.fig, _ = plt.subplots(figsize=(8, 5), frameon=True)
@@ -138,33 +139,34 @@ class RTinference:
         self.model.eval()
 
     ############### DATA EXTRACTION ###############
-
     def read_params_from_json(self, filename='./models/params.json', query_id=None):
         if os.getcwd() == 'scripts':
             os.chdir('..')
         try:
             with open(filename, 'r') as file:
                 data = json.load(file)
+                for item in data:
+                    if query_id is not None and item['id'] == query_id:
+                        result_dict = {
+                            'id': item['id'],
+                            'mean0': item['mean0'],
+                            'mean1': item['mean1'],
+                            'mean2': item['mean2'],
+                            'mean3': item['mean3'],
+                            'std0': item['std0'],
+                            'std1': item['std1'],
+                            'std2': item['std2'],
+                            'std3': item['std3']
+                        }
+                        return result_dict
 
-                if query_id is not None and data['id'] != query_id:
-                    return None  # Return None if the queried id does not match
-
-                result_dict = {
-                    'id': data['id'],
-                    'mean0': data['mean0'],
-                    'mean1': data['mean1'],
-                    'mean2': data['mean2'],
-                    'mean3': data['mean3'],
-                    'std0': data['std0'],
-                    'std1': data['std1'],
-                    'std2': data['std2'],
-                    'std3': data['std3']
-                }
-
-                return result_dict
+                # If the loop completes without finding a matching ID
+                print(cf.red(f"No data found for the specified id.\n {query_id}"))
+                return None
 
         except (FileNotFoundError, json.decoder.JSONDecodeError, KeyError):
             return None
+
 
     def generate_image(self, data):
         lidar = data.ranges
