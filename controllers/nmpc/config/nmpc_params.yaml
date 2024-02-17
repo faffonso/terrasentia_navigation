@@ -5,12 +5,12 @@ controller/NMPC:
   N:  15  # Prediction Horizon
 
   # Weight Matrices
-  Q_x:      1.0 # X cost
-  Q_y:      1.0 # Y cost
+  Q_x:      2.5 # X cost
+  Q_y:      2.5 # Y cost
   Q_theta:  1.0 # Theta cost
 
-  R_v:      1.0 # Linear speed cost
-  R_omega:  1.0 # Angular speed cost
+  R_v:      0.3 # Linear speed cost
+  R_omega:  0.3 # Angular speed cost
 
   # Boundary Action Control
   v_max:      0.8 # [m/s]
