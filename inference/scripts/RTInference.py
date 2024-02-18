@@ -33,9 +33,7 @@ device = torch.device("cpu")
 
 ############ GLOBAL PARAMS ############
 global runid
-runid = '16-02-2024_19-40-59'
-global SHOW
-SHOW = True
+runid = '17-02-2024_20-24-45'
 
 os.chdir('..')
 print(os.getcwd())
