@@ -218,8 +218,14 @@ class Wp_gen():
     def _solve_quadratic(self, a, b, c):
         discriminant = (b**2) - (4*a*c)
 
-        sol1 = (-b - math.sqrt(discriminant)) / (2 * a)
-        sol2 = (-b + math.sqrt(discriminant)) / (2 * a)
+        try:
+            sol1 = (-b - math.sqrt(discriminant)) / (2 * a)
+            sol2 = (-b + math.sqrt(discriminant)) / (2 * a)
+        except ValueError as e:
+            print('ERROR:', e)
+            print(f'a: {a}, b: {b}, disc: {discriminant}')
+            sol1 = 1
+            sol2 = 1
 
         return sol1, sol2
 
