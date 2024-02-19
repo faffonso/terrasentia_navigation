@@ -33,7 +33,7 @@ device = torch.device("cpu")
 
 ############ GLOBAL PARAMS ############
 global runid
-runid = '17-02-2024_20-24-45'
+runid = '18-02-2024_20-30-26'
 
 os.chdir('..')
 print(os.getcwd())
@@ -82,7 +82,6 @@ class RTinference:
             except Exception as e:
                 print(e)
                 pass
-            
             rate.sleep()
 
     ############### ROS INTEGRATION ###############
