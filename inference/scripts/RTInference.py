@@ -48,7 +48,7 @@ class RTinference:
         ########## PARAMS LOAD ##########
         result = self.read_params_from_json(query_id=runid)
         if result is not None:
-            print('params.json query sucessful.')
+            print('params.json query sucessful.', runid)
             self.mean = [result['mean0'], result['mean1'], result['mean2'], result['mean3']]
             self.std = [result['std0'], result['std1'], result['std2'], result['std3']]
         else:
