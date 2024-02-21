@@ -10,6 +10,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import numpy as np
 import colorful as cf
 import math
+import matplotlib.pyplot as plt
 
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
@@ -155,13 +156,37 @@ class Wp_gen():
         self.odom_msg = msg
 
     def _convert_origin(self, m1, m2, c1, c2):
-
-        widht_min = -self.img_width/2
-        widht_max = self.img_width/2
+        print(f'Receive {m1}, {m2}, {c1}, {c2}')
 
         m = -(m1 + m2) / 2
         c = -(c1 + c2) / 2 
-        c -= self.img_width
+
+        aux = int(round(-c / self.img_height))
+
+        c += aux*self.img_width
+
+        # x = np.linspace(-self.img_width/2, self.img_width/2, 100)
+        # y1 = - m1 * x - c1 + aux*self.img_height
+        # y2 = - m2 * x - c2 + aux*self.img_height
+        # y = m * x + c
+
+        # # Plot lines
+        # plt.plot(x, y1, label='m1')
+        # plt.plot(x, y2, label='m2')
+        # plt.plot(x, y, label='m')
+        
+        # # Add labels and legend
+        # plt.xlabel('x')
+        # plt.ylabel('y')
+        # plt.legend()
+
+        # plt.xlim(-self.img_width/2, self.img_width/2) 
+        # plt.ylim(0, self.img_height)  
+    
+        
+        # # Show plot
+        # plt.grid(True)
+        # plt.show()
 
         return m, c
 
