@@ -84,7 +84,6 @@ class Wp_gen():
         #x *= self.row_width / self.img_width
         #y *= self.row_height / self.img_height
 
-        x -= 0.6
         rospy.loginfo(cf.orange(f'Y={y}, X={x}'))
 
         q = (
@@ -99,7 +98,7 @@ class Wp_gen():
         self.goal_msg.pose.position.x = self.odom_msg.pose.pose.position.x + x * np.sin(heading_global) + y * np.cos(heading_global)
         self.goal_msg.pose.position.y = self.odom_msg.pose.pose.position.y - (x * np.cos(heading_global) - y * np.sin(heading_global))
 
-        q = quaternion_from_euler(0.0, 0.0, - heading + heading_global)
+        q = quaternion_from_euler(0.0, 0.0, - 2 * heading + heading_global)
 
         self.goal_msg.pose.orientation.x = q[0]
         self.goal_msg.pose.orientation.y = q[1]
@@ -144,11 +143,11 @@ class Wp_gen():
         y1 = x1 * m * x_regu + c
         y2 = x2 * m * x_regu + c
 
-        # print(f'Sol 1 x={x1} and y={y1} using {x1 * x_regu}')
-        # print(f'Sol 2 x={x2} and y={y2} using {x2 * x_regu}')
+        print(f'Sol 1 x={x1} and y={y1} using {x1 * x_regu}')
+        print(f'Sol 2 x={x2} and y={y2} using {x2 * x_regu}')
 
-        # x = np.linspace(-self.img_width/2, self.img_width/2, 100)
-        # y = m * x + c
+        x = np.linspace(-self.img_width/2, self.img_width/2, 100)
+        y = m * x + c
 
         # # Plot lines
         # plt.plot(x1 * x_regu, y1, 'ro') 
@@ -189,10 +188,10 @@ class Wp_gen():
         aux = -c / self.img_height
         c += aux*self.img_width
 
-        x = np.linspace(-self.img_width/2, self.img_width/2, 100)
-        y = m * x + c
-        y1 = - m1 * x - c1 + aux*self.img_width
-        y2 = - m2 * x - c2 + aux*self.img_width
+        # x = np.linspace(-self.img_width/2, self.img_width/2, 100)
+        # y = m * x + c
+        # y1 = - m1 * x - c1 + aux*self.img_width
+        # y2 = - m2 * x - c2 + aux*self.img_width
 
         # # Plot lines
         # plt.plot(x, y1, label='m1')
