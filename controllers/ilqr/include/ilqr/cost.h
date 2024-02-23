@@ -44,10 +44,10 @@ class Cost
         int _N,     // Precition horizon size
             _Nx,    // State vector size
             _Nu,    // Action control vector size
-            _p=2;   // Number os Constraints
+            _p=4;   // Number os Constraints
 
         MatrixXd _I_mu;
-        std::vector<float> _lambda;
+        MatrixXd _lambda;
 
         l_prime_t _l_prime; // Struct contains cost funcion derivatives
         c_prime_t _c_prime; // Contains constraints jacobians
@@ -93,7 +93,20 @@ class Cost
          */
         l_prime_t  get_l_prime(std::vector<DM> input);
 
+        /**
+         * @brief Get the c object
+         * 
+         * @param input State and Action control {x, u}
+         * @return MatrixXd 
+         */
         MatrixXd get_c(std::vector<DM> input);
+
+        /**
+         * @brief Get the c prime object
+         * 
+         * @param input State and Action control {x, u}
+         * @return c_prime_t 
+         */
         c_prime_t get_c_prime(std::vector<DM> input);
 
         /**
@@ -103,7 +116,7 @@ class Cost
          * @param u Action control
          * @return double 
          */
-        double trajectory_cost(MatrixXd x, MatrixXd u, std::vector<float>& lambda);
+        double trajectory_cost(MatrixXd x, MatrixXd u, MatrixXd& lambda);
 
         /**
          * @brief Get the Qf object

@@ -46,9 +46,20 @@ int main(int argc, char** argv)
 
     std::vector<float> lambda = std::vector<float> (2, 0);
 
+    std::vector<double> xtt(3, 0);
+    std::vector<double> utt(2, 0);
+    xtt[0] = 1.0;
+    xtt[1] = 1.0;
+    xtt[2] = 1.0;
+
+    utt[0] = 1.0;
+    utt[1] = 1.0;
+
+    std::vector<DM> input = {DM(xtt), DM(utt)};
+
     while (ros::ok()) {
+
         control.run();
-        ros::spinOnce();
         rate.sleep();
     }
 

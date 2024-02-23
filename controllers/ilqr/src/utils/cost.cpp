@@ -19,7 +19,7 @@ Cost::Cost(int N,
     _Nu = 2;
 
     _I_mu = MatrixXd::Identity(_p, _p);
-    _lambda = std::vector<float>(_p, 0);
+    _lambda = MatrixXd::Zero(_p, 1);
 
     std::vector<double> Qf_values = {Qf_x, Qf_y, Qf_theta};
     std::vector<double> Q_values = {Q_x, Q_y, Q_theta};
@@ -49,10 +49,13 @@ Cost::Cost(int N,
     _l_uu = Function("l_uu", {x, u}, {l_uu});
 
     // Constraints Functions
-    SX c1 = v_max - u(0);
-    SX c2 = omega_max - u(1);
+    SX c1 = u(0) - v_max;
+    SX c2 = - u(0);
 
-    SX c = vertcat(c1, c2);
+    SX c3 = u(1) - omega_max;
+    SX c4 = - u(1) - omega_max;
+
+    SX c = vertcat(c1, c2, c3, c4);
 
     SX c_x = jacobian(c, x);
     SX c_u = jacobian(c, u);
@@ -62,11 +65,11 @@ Cost::Cost(int N,
     _c_u = Function("c_u", {x, u}, {c_u});
 }
 
-double Cost::trajectory_cost(MatrixXd x, MatrixXd u, std::vector<float>& lambda)
+double Cost::trajectory_cost(MatrixXd x, MatrixXd u, MatrixXd& lambda)
 {
     std::size_t Nx = x.rows();
     std::size_t Nu = u.rows();
-
+    
     if (Nu != _N)
     {
         ROS_ERROR_STREAM("Prediction Size (N) is diferente of action control size (Nu) - (" << _N << "!=" << Nu << ").");
@@ -97,14 +100,22 @@ double Cost::trajectory_cost(MatrixXd x, MatrixXd u, std::vector<float>& lambda)
         input = {DM(xs), DM(us)};
         J += static_cast<double>(_l(input).at(0));
 
-        auto Jc = _c(input).at(0);
+        auto Jc = this->get_c(input);
 
         for (i=0; i<_p; i++)
         {
-            auto j = static_cast<double>(Jc(i));
-            //J += 0.5 * (j * _I_mu(i, i) * j + lambda[i] * j);
+            if (lambda(n, i) > 0)
+                _I_mu(i, i) = 10.0;
+            else
+                _I_mu(i, i) = 0;
+        }
+        J += (0.5 * (Jc.transpose() * _I_mu * Jc + lambda.row(n) * Jc)).sum();
 
-            lambda[i] = std::max(0.0, lambda[i] + j);
+        for (i=0; i<_p; i++)
+        {
+            lambda(n, i) = std::max(0.0, lambda(n, i) + Jc(i, 0));
+            // ROS_INFO_STREAM(lambda(n, i) + Jc(i, 0));
+            // ROS_INFO_STREAM("New value " << lambda(n, i));
         }
     }
     
@@ -129,12 +140,12 @@ l_prime_t  Cost::get_l_prime(std::vector<DM> input)
 }
 
 MatrixXd Cost::get_c(std::vector<DM> input) {
-    return Eigen::Matrix<double, 2, 1>::Map(DM::densify(_c(input).at(0)).nonzeros().data(), 2, 1);
+    return Eigen::Matrix<double, 4, 1>::Map(DM::densify(_c(input).at(0)).nonzeros().data(), 4, 1);
 }
 
 c_prime_t Cost::get_c_prime(std::vector<DM> input){
-    _c_prime.c_x = Eigen::Matrix<double, 3, 2>::Map(DM::densify(_c_x(input).at(0)).nonzeros().data(), 3, 2);
-    _c_prime.c_u = Eigen::Matrix<double, 2, 2>::Map(DM::densify(_c_u(input).at(0)).nonzeros().data(), 2, 2);
+    _c_prime.c_x = Eigen::Matrix<double, 3, 4>::Map(DM::densify(_c_x(input).at(0)).nonzeros().data(), 3, 4);
+    _c_prime.c_u = Eigen::Matrix<double, 2, 4>::Map(DM::densify(_c_u(input).at(0)).nonzeros().data(), 2, 4);
 
     return _c_prime;
 }

@@ -41,7 +41,7 @@ class iLQR
         int _N,     // Precition horizon size
             _Nx=3,  // State vector size
             _Nu=2,  // Action control vector size
-            _p=2;   // Number os Constraints
+            _p=4;   // Number os Constraints
         
         float _dt,      // Sampling time [s]
             _v_max,     // Max linear velocity [m/s]
@@ -74,9 +74,9 @@ class iLQR
                 _x;     // Input state (x0 - xref)
 
         // Auxiliar Matrices and Vectors to comunicate between methods
-        MatrixXd _u0, _ks, _xs, _us, _xs_new, _us_new;
+        MatrixXd _u0, _ks, _xs, _us, _xs_new, _us_new, _lambda;
         Tensor<float, 3> _Ks;
-        std::vector<float> _alphas, _lambda;
+        std::vector<float> _alphas;
 
         /**
          * @brief Simulate the system using (x_0, us_new) to get the trajectory xs_new
@@ -93,7 +93,7 @@ class iLQR
          * 
          * @param regu Regularization term
          */
-        void _backward_pass(float regu, VectorXd lambda);
+        void _backward_pass(float regu, MatrixXd lambda);
 
         /**
          * @brief Simulate the system using (x_0, us) to get the trajectory xs
