@@ -119,7 +119,7 @@ void iLQR::run()
     _cmd_vel_msg.twist.linear.x = _us(0, 0);
     _cmd_vel_msg.twist.angular.z = _us(0, 1);
 
-    _cmd_vel_pub.publish(_cmd_vel_msg);
+    //_cmd_vel_pub.publish(_cmd_vel_msg);
 
     ROS_INFO_STREAM("Run in " << ros::Time::now() - init);
 
@@ -132,7 +132,7 @@ void iLQR::fit(MatrixXd us)
     this->_rollout();
 
     _J = _cost->trajectory_cost(_xs, _us, _lambda);
-    ROS_INFO_STREAM("Trajectory cost: " << _J);
+    //ROS_INFO_STREAM("Trajectory cost: " << _J);
 
     int max_iter = 100;
     float tol = 0.01;
@@ -176,9 +176,9 @@ void iLQR::fit(MatrixXd us)
         regu *= 2.0;
     }
 
-    ROS_INFO_STREAM("Final fit");
-    ROS_INFO_STREAM(_lambda);
-    ROS_INFO_STREAM(_us);
+    //ROS_INFO_STREAM("Final fit");
+    //ROS_INFO_STREAM(_lambda);
+    //ROS_INFO_STREAM(_us);
 }
 
 void iLQR::_forward_pass(float alpha)
@@ -253,19 +253,10 @@ void iLQR::_backward_pass(float regu, MatrixXd lambda)
         for (i=0; i<_Nu; i++)
             us.at(i) = _us(n, i);
 
-        for (i=0; i<_p; i++)
-        {
-            if (lambda(n, i) > 0)
-                I_mu(i, i) = 10.0;
-            else
-                I_mu(i, i) = 0;
-        }
 
         input = {DM(xs), DM(us)};
         f_prime = _dynamic->get_f_prime(input);
         l_prime = _cost->get_l_prime(input);
-        c_prime = _cost->get_c_prime(input);
-        c = _cost->get_c(input);
 
         Q_x = l_prime.l_x + s * f_prime.f_x;
         Q_u = l_prime.l_u + s * f_prime.f_u;
@@ -276,12 +267,6 @@ void iLQR::_backward_pass(float regu, MatrixXd lambda)
         Q_xx = l_prime.l_xx + f_prime.f_x.transpose() * S * f_prime.f_x;
         Q_uu = l_prime.l_uu + f_prime.f_u.transpose() * S * f_prime.f_u;
         Q_ux = f_prime.f_u.transpose() * S * f_prime.f_x;
-
-        Q_x += c_prime.c_x * I_mu * c + c_prime.c_x * lambda.row(n).transpose();
-        Q_u += c_prime.c_u * I_mu * c + c_prime.c_u * lambda.row(n).transpose();
-        Q_xx += c_prime.c_x * I_mu * c_prime.c_x.transpose();
-        Q_uu += c_prime.c_u * I_mu * c_prime.c_u.transpose();
-        Q_ux += c_prime.c_u * I_mu * c_prime.c_x.transpose();
 
         Q_uu_reg = Q_uu + f_prime.f_u.transpose() * regu_I * f_prime.f_u;
         Q_ux_reg = Q_ux + f_prime.f_u.transpose() * regu_I * f_prime.f_x;

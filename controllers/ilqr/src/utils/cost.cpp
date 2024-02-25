@@ -18,9 +18,6 @@ Cost::Cost(int N,
     _Nx = 3;
     _Nu = 2;
 
-    _I_mu = MatrixXd::Identity(_p, _p);
-    _lambda = MatrixXd::Zero(_p, 1);
-
     std::vector<double> Qf_values = {Qf_x, Qf_y, Qf_theta};
     std::vector<double> Q_values = {Q_x, Q_y, Q_theta};
     std::vector<double> R_values = {R_v, R_omega};
@@ -31,6 +28,19 @@ Cost::Cost(int N,
 
     SX x = SX::sym("x", 3);
     SX u = SX::sym("u", 2);
+
+    // Barrier Function
+    SX c1 = -log( (v_max - u(0)) / (v_max / 2));
+    SX c2 = -log( (u(0)) / (v_max / 2));
+
+    SX c3 = -log( (omega_max - u(1)) / omega_max);
+    SX c4 = -log( (u(1) + omega_max) / omega_max);
+
+    SX c = 0.0;
+    c = 0.1 * (c1 + c2 + c3 + c4);
+
+    ROS_INFO_STREAM("Debug");
+    ROS_INFO_STREAM(c);
 
     SX l = (mtimes(x.T(), mtimes(_Q, x)) + mtimes(u.T(), mtimes(_R, u)));
     SX lf = (mtimes(x.T(), mtimes(_Qf, x)));
@@ -47,22 +57,6 @@ Cost::Cost(int N,
     _l_u = Function("l_u", {x, u}, {l_u});
     _l_xx = Function("l_xx", {x, u}, {l_xx});
     _l_uu = Function("l_uu", {x, u}, {l_uu});
-
-    // Constraints Functions
-    SX c1 = u(0) - v_max;
-    SX c2 = - u(0);
-
-    SX c3 = u(1) - omega_max;
-    SX c4 = - u(1) - omega_max;
-
-    SX c = vertcat(c1, c2, c3, c4);
-
-    SX c_x = jacobian(c, x);
-    SX c_u = jacobian(c, u);
-
-    _c = Function("c", {x, u}, {c});
-    _c_x = Function("c_x", {x, u}, {c_x});
-    _c_u = Function("c_u", {x, u}, {c_u});
 }
 
 double Cost::trajectory_cost(MatrixXd x, MatrixXd u, MatrixXd& lambda)
@@ -99,24 +93,6 @@ double Cost::trajectory_cost(MatrixXd x, MatrixXd u, MatrixXd& lambda)
 
         input = {DM(xs), DM(us)};
         J += static_cast<double>(_l(input).at(0));
-
-        auto Jc = this->get_c(input);
-
-        for (i=0; i<_p; i++)
-        {
-            if (lambda(n, i) > 0)
-                _I_mu(i, i) = 10.0;
-            else
-                _I_mu(i, i) = 0;
-        }
-        J += (0.5 * (Jc.transpose() * _I_mu * Jc + lambda.row(n) * Jc)).sum();
-
-        for (i=0; i<_p; i++)
-        {
-            lambda(n, i) = std::max(0.0, lambda(n, i) + Jc(i, 0));
-            // ROS_INFO_STREAM(lambda(n, i) + Jc(i, 0));
-            // ROS_INFO_STREAM("New value " << lambda(n, i));
-        }
     }
     
     for (i=0; i<_Nx; i++)
@@ -137,17 +113,6 @@ l_prime_t  Cost::get_l_prime(std::vector<DM> input)
     _l_prime.l_uu = Eigen::Matrix<double, 2, 2>::Map(DM::densify(_l_uu(input).at(0)).nonzeros().data(), 2, 2);
 
     return _l_prime;
-}
-
-MatrixXd Cost::get_c(std::vector<DM> input) {
-    return Eigen::Matrix<double, 4, 1>::Map(DM::densify(_c(input).at(0)).nonzeros().data(), 4, 1);
-}
-
-c_prime_t Cost::get_c_prime(std::vector<DM> input){
-    _c_prime.c_x = Eigen::Matrix<double, 3, 4>::Map(DM::densify(_c_x(input).at(0)).nonzeros().data(), 3, 4);
-    _c_prime.c_u = Eigen::Matrix<double, 2, 4>::Map(DM::densify(_c_u(input).at(0)).nonzeros().data(), 2, 4);
-
-    return _c_prime;
 }
 
 MatrixXd Cost::get_Qf()

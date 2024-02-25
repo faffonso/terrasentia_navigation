@@ -7,7 +7,7 @@ controller/NMPC:
   # Weight Matrices
   Q_x:      1.0
   Q_y:      1.0
-  Q_theta:  1.5 
+  Q_theta:  1.0
 
   R_v:      1.0
   R_omega:  1.0

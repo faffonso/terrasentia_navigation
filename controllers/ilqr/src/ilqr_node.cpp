@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "ilqr_node");
     ros::NodeHandle nh;
 
-    ros::Rate rate(10);
+    ros::Rate rate(100);
 
     Dynamics dynamic;
     if (!initDynamics(dynamic, nh)) {

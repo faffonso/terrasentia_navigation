@@ -16,6 +16,7 @@
 /* Bibs */
 #include <iostream>
 #include <string>
+#include <cmath>
 
 #include <ros/console.h>
 #include <Eigen/Dense>
@@ -46,17 +47,12 @@ class Cost
             _Nu,    // Action control vector size
             _p=4;   // Number os Constraints
 
-        MatrixXd _I_mu;
-        MatrixXd _lambda;
-
         l_prime_t _l_prime; // Struct contains cost funcion derivatives
-        c_prime_t _c_prime; // Contains constraints jacobians
 
         
         SX _Qf, _Q, _R;     // Weight matrices
         
         Function _l, _lf, _l_x, _l_u, _l_xx, _l_uu; // CasADi functions of cost interface
-        Function _c, _c_x, _c_u;    // CasADi Constraints Functions
 
 
     public:
@@ -92,22 +88,6 @@ class Cost
          * @return l_prime_t 
          */
         l_prime_t  get_l_prime(std::vector<DM> input);
-
-        /**
-         * @brief Get the c object
-         * 
-         * @param input State and Action control {x, u}
-         * @return MatrixXd 
-         */
-        MatrixXd get_c(std::vector<DM> input);
-
-        /**
-         * @brief Get the c prime object
-         * 
-         * @param input State and Action control {x, u}
-         * @return c_prime_t 
-         */
-        c_prime_t get_c_prime(std::vector<DM> input);
 
         /**
          * @brief Get trajectory cost
