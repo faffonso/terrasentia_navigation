@@ -40,12 +40,7 @@ Cost::Cost(int N,
 
     SX c = (1.0/t) * (c1 + c2 + c3 + c4);
 
-    // ROS_INFO_STREAM("TEST");
-    // ROS_INFO_STREAM(1/eps);
-    // ROS_INFO_STREAM("TEST");
-
     // Running Cost
-
     SX l = c + (mtimes(x.T(), mtimes(_Q, x)) + mtimes(u.T(), mtimes(_R, u)));
     SX lf = (mtimes(x.T(), mtimes(_Qf, x)));
 
@@ -55,6 +50,7 @@ Cost::Cost(int N,
     SX l_xx = jacobian(l_x, x);
     SX l_uu = jacobian(l_u, u);
 
+    // CasADi Functions
     _l = Function("l", {x, u}, {l});
     _lf = Function("lf", {x}, {lf});
     _l_x = Function("l_x", {x, u}, {l_x});

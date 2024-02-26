@@ -131,12 +131,9 @@ class iLQR
          * @param cost Cost function interface
          * @param dt Sampling time [s]
          * @param N Prediction Horizon
-         * @param v_max Max linear velocity
-         * @param omega_max Max angular velocity
          */
         iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost, 
-            double dt, int N, 
-            float v_max, float omega_max);
+            double dt, int N);
 
         /**
          * @brief Run controller
