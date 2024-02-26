@@ -1,8 +1,7 @@
 #include "ilqr/ilqr.h"
 
 iLQR::iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost, 
-            double dt, int N, 
-            float v_max, float omega_max)
+            double dt, int N)
 {
     _nh = nh;
     _dynamic = dynamic;
@@ -10,9 +9,6 @@ iLQR::iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost,
 
     _dt = dt;
     _N = N;
-
-    _v_max = v_max;
-    _omega_max = omega_max;
 
     _x    = VectorXd(_Nx);
     _x0   = VectorXd(_Nx);
@@ -81,12 +77,12 @@ void iLQR::run()
 
     for (int n=0; n<_N; n++)
     {
-        geometry_msgs::Quaternion q_euler2 = tf::createQuaternionMsgFromRollPitchYaw(0.0, 0.0, _xs(n, 2));
+        geometry_msgs::Quaternion q_euler = tf::createQuaternionMsgFromRollPitchYaw(0.0, 0.0, _xs(n, 2));
 
         pose.pose.position.x = _xs(n, 0);
         pose.pose.position.y = _xs(n, 1);
 
-        pose.pose.orientation = q_euler2;
+        pose.pose.orientation = q_euler;
 
         _path_msg.poses.push_back(pose);
     }
@@ -310,9 +306,9 @@ double iLQR::_get_heading(geometry_msgs::Pose pose)
     double roll, pitch, yaw;
 
     tf::Quaternion q(pose.orientation.x,
-                            pose.orientation.y,
-                            pose.orientation.z,
-                            pose.orientation.w);
+                     pose.orientation.y,
+                     pose.orientation.z,
+                     pose.orientation.w);
 
     tf::Matrix3x3 m(q);
     m.getRPY(roll, pitch, yaw);

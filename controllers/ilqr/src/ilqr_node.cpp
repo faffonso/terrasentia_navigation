@@ -49,8 +49,7 @@ int main(int argc, char** argv)
     nh.getParam("/controller/cost/N", N);
 
     iLQR control(nh, &dynamic, &cost,
-                dt, N,
-                1.0, 1.0);
+                dt, N);
     
     ROS_INFO_STREAM(GREEN << "iLQR Created!" << RESET);
 
