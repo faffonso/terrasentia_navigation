@@ -27,6 +27,7 @@ typedef struct f_prime {
     MatrixXd f_x; // df/dx
     MatrixXd f_u; // df/du
 } f_prime_t;
+
 class Dynamics
 {
     protected:
@@ -57,7 +58,8 @@ class Dynamics
          * @param input State and Action control {x, u}
          * @return std::vector<casadi::DM> 
          */
-        std::vector<casadi::DM>  get_f(std::vector<DM> input);
+        
+        MatrixXd get_f(std::vector<DM> input);
 
         /**
          * @brief Get the f prime object (dynamics derivatives)

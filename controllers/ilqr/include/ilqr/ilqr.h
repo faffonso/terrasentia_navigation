@@ -24,10 +24,11 @@
 #include <Eigen/Dense>
 #include <unsupported/Eigen/CXX11/Tensor>
 
+#include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
-#include "nav_msgs/Path.h"
 #include "geometry_msgs/TwistStamped.h"
 #include "nav_msgs/Odometry.h"
+#include "nav_msgs/Path.h"
 
 #include "ilqr/dynamics.h"
 #include "ilqr/cost.h"
@@ -102,6 +103,21 @@ class iLQR
          */
         void _rollout(); 
 
+        /**
+         * @brief Filter small values of liner speed to 0
+         * 
+         */
+        void _filter();
+
+        /**
+         * @brief Convert pose quaternion to heading angle
+         * 
+         * @param pose Pose msg
+         * @return double 
+         */
+        double _get_heading(geometry_msgs::Pose pose);
+
+
         // ROS Subscriber callbacks
         void _goal_callback(const geometry_msgs::PoseStamped::ConstPtr& msg);
         void _odom_callback(const nav_msgs::Odometry::ConstPtr& msg);
@@ -134,6 +150,7 @@ class iLQR
          * @param us Optimal action control
          */
         void fit(MatrixXd us);
+
         
 };
 

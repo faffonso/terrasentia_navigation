@@ -9,21 +9,37 @@
 bool initDynamics(Dynamics& dynamic, ros::NodeHandle& nh);
 bool initCost(Cost& cost, ros::NodeHandle& nh);
 
+// ANSI color codes
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define WHITE   "\033[37m"
+
+/*
+Include params to Cost and Dynamic object
+Debug Optimization after rotation
+Test max values
+*/
+
 int main(int argc, char** argv) 
 {
     ros::init(argc, argv, "ilqr_node");
     ros::NodeHandle nh;
 
-    ros::Rate rate(100);
+    ros::Rate rate(20);
 
     Dynamics dynamic;
     if (!initDynamics(dynamic, nh)) {
-        return 1; // Or handle the error appropriately
+        return 1;
     }
 
     Cost cost;
     if (!initCost(cost, nh)) {
-        return 1; // Or handle the error appropriately
+        return 1; 
     }
 
     int N;
@@ -36,11 +52,12 @@ int main(int argc, char** argv)
                 dt, N,
                 1.0, 1.0);
     
+    ROS_INFO_STREAM(GREEN << "iLQR Created!" << RESET);
+
     while (ros::ok()) {
-        //ROS_INFO("Hello %s", "World");
         control.run();
-        ros::spinOnce();
         rate.sleep();
+        ros::spinOnce();
     }
 
     return 0;
@@ -59,15 +76,15 @@ bool initDynamics(Dynamics& dynamic, ros::NodeHandle& nh) {
         return false;
     }
 
-    ROS_INFO_STREAM("Creating Dynamic Model using dt: " << dt << ", model: " << model);
+    ROS_INFO_STREAM(GREEN << "Dynamic Model Object Created!" << RESET);
 
     dynamic = Dynamics(dt, model);
     return true;
 }
 
 bool initCost(Cost& cost, ros::NodeHandle& nh) {
-    int N;
-    float Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega;
+    int N, eps, t;
+    float Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega, v_max, omega_max;
 
     if(!nh.getParam("/controller/cost/N", N))
     {
@@ -115,8 +132,32 @@ bool initCost(Cost& cost, ros::NodeHandle& nh) {
         return 0;
     }
 
-    ROS_INFO_STREAM("Creating Dynamic Model using N: " << N << ", final state cost: " << Qf_x << " " << Qf_y << " " << Qf_theta << ", state cost: " << Q_x << " " << Q_y << " " << Q_theta << ", action control cost: " << R_v << " " << R_omega);
+    if(!nh.getParam("/controller/cost/v_max", v_max))
+    {
+        ROS_ERROR_STREAM("Max linear speed (v_max) could not be read.");
+        return 0;
+    }
 
-    cost = Cost(N, Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega);
+        if(!nh.getParam("/controller/cost/omega_max", omega_max))
+    {
+        ROS_ERROR_STREAM("Max angular spped (omega_max) could not be read.");
+        return 0;
+    }
+
+        if(!nh.getParam("/controller/cost/eps", eps))
+    {
+        ROS_ERROR_STREAM("Barrier Function eps could not be read.");
+        return 0;
+    }
+
+        if(!nh.getParam("/controller/cost/t", t))
+    {
+        ROS_ERROR_STREAM("Barrier Function t could not be read.");
+        return 0;
+    }
+
+    ROS_INFO_STREAM(GREEN << "Cost Object Created!" << RESET);
+
+    cost = Cost(N, Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega, v_max, omega_max, eps, t);
     return true;
 }
