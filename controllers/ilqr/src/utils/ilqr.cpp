@@ -52,54 +52,41 @@ void iLQR::run()
 {
     ros::Time init = ros::Time::now();
 
-    double roll, pitch, yaw;
+    MatrixXd us(_N, _Nu);
+    us.setZero();
+    double heading;
 
-    tf::Quaternion q(_odom_msg.pose.pose.orientation.x,
-                                    _odom_msg.pose.pose.orientation.y,
-                                    _odom_msg.pose.pose.orientation.z,
-                                    _odom_msg.pose.pose.orientation.w);
+    heading = this->_get_heading(_odom_msg.pose.pose);
 
-    tf::Matrix3x3 m(q);
-    m.getRPY(roll, pitch, yaw);
+    _x0 << _odom_msg.pose.pose.position.x,
+          _odom_msg.pose.pose.position.y,
+          heading;
 
-    _x << _odom_msg.pose.pose.position.x,
-            _odom_msg.pose.pose.position.y,
-            yaw;
-
-    tf::Quaternion q1(_goal_msg.pose.orientation.x,
-                                    _goal_msg.pose.orientation.y,
-                                    _goal_msg.pose.orientation.z,
-                                    _goal_msg.pose.orientation.w);
-    tf::Matrix3x3 m1(q1);
-    m1.getRPY(roll, pitch, yaw);
+    heading = this->_get_heading(_goal_msg.pose);
 
     _xref << _goal_msg.pose.position.x,
-                _goal_msg.pose.position.y,
-                yaw;
-
-    _x0 = _x - _xref;
-
-    MatrixXd us(_N, _Nu);
-    for (int n=0; n<_N; n++)
-    {
-        us(n, 0) = 0.0;
-        us(n, 1) = 0.0;
-    }
+             _goal_msg.pose.position.y,
+             heading;
 
     this->fit(us);
+
+    // Gen Path msg
+    this->_rollout();
 
     geometry_msgs::PoseStamped pose;
 
     _path_msg.header.stamp = ros::Time::now();
     _path_msg.header.frame_id = _frame_id;
+
+
     for (int n=0; n<_N; n++)
     {
-        geometry_msgs::Quaternion q_euler = tf::createQuaternionMsgFromRollPitchYaw(0.0, 0.0, _xs(n, 2) + _xref(2));
+        geometry_msgs::Quaternion q_euler2 = tf::createQuaternionMsgFromRollPitchYaw(0.0, 0.0, _xs(n, 2));
 
-        pose.pose.position.x = _xs(n, 0) + _xref(0);
-        pose.pose.position.y = _xs(n, 1) + _xref(1);
+        pose.pose.position.x = _xs(n, 0);
+        pose.pose.position.y = _xs(n, 1);
 
-        pose.pose.orientation = q_euler;
+        pose.pose.orientation = q_euler2;
 
         _path_msg.poses.push_back(pose);
     }
@@ -108,33 +95,35 @@ void iLQR::run()
     _path_msg.poses.clear();
 
     _cmd_vel_msg.twist.linear.x = _us(0, 0);
-    _cmd_vel_msg.twist.angular.z = _us(0, 0);
+    _cmd_vel_msg.twist.angular.z = _us(0, 1);
 
-    ROS_INFO_STREAM("Run in " << ros::Time::now() - init);
+    _cmd_vel_pub.publish(_cmd_vel_msg);
 
+    ROS_INFO_STREAM("Run iLQR | State " << _x(0) << " " << _x(1) << " " << _x(2) << 
+                            " | Reference " << _xref(0) << " " << _xref(1) << " " << _xref(2) << 
+                            " | Action control " << _us(0, 0) << " " << _us(0, 1 ) << 
+                            " | Time " << ros::Time::now() - init << " seconds");
 }
 
 void iLQR::fit(MatrixXd us)
 {
+    // Optimization params
+    int max_iter    = 100;
+    float tol       = 0.01;
+
+    float regu      = 20.0;
+    float max_regu  = 10000.0;
+    float min_regu  = 0.001;
+
     _us = us;
 
     this->_rollout();
 
-    _J = _cost->trajectory_cost(_xs, _us);
+    _J = _cost->trajectory_cost(_xs, _us, _xref);
     //ROS_INFO_STREAM("Trajectory cost: " << _J);
-
-    int max_iter = 100;
-    float tol = 0.01;
-    float regu=20.0;
-    float max_regu = 1000.0;
-    float min_regu = 20.0;
 
     for (int iter=0; iter<max_iter; iter++)
     {
-    
-        regu = std::min(regu, max_regu);
-        regu = std::max(regu, min_regu);
-
         this->_backward_pass(regu); 
 
         if (std::abs(_delta_J) < tol)
@@ -146,7 +135,7 @@ void iLQR::fit(MatrixXd us)
         for (float alpha : _alphas)
         {
             this->_forward_pass(alpha);
-            _J_new = _cost->trajectory_cost(_xs_new, _us_new);
+            _J_new = _cost->trajectory_cost(_xs_new, _us_new, _xref);
 
             //ROS_INFO_STREAM("Trying converge " << _J_new << " on " << _J);
 
@@ -163,11 +152,15 @@ void iLQR::fit(MatrixXd us)
         }
 
         regu *= 2.0;
+
+        regu = std::min(std::max(regu, min_regu), max_regu);
     }
 
-    //ROS_INFO_STREAM("Final fit");
-    //ROS_INFO_STREAM(_xs);
-    //ROS_INFO_STREAM(_us);
+    // ROS_INFO_STREAM("Final fit");
+    // ROS_INFO_STREAM(_xs);
+    // ROS_INFO_STREAM(_us);
+
+    this->_filter();
 }
 
 void iLQR::_forward_pass(float alpha)
@@ -177,7 +170,7 @@ void iLQR::_forward_pass(float alpha)
 
     std::vector<float> xs(_xs.cols());
     std::vector<float> us(_us.cols());
-    std::vector<DM> input, result;
+    std::vector<DM> input;
 
     _xs_new.row(0) = _xs.row(0);
 
@@ -188,7 +181,6 @@ void iLQR::_forward_pass(float alpha)
                 Ks(i, j) = _Ks(n, i, j);
 
         xs_aux = (_xs_new.row(n) - _xs.row(n)).transpose();
-
         _us_new.row(n) = _us.row(n) + (Ks * xs_aux).transpose() + alpha * _ks.row(n);
 
         for (i=0; i<_Nx; i++)
@@ -198,10 +190,9 @@ void iLQR::_forward_pass(float alpha)
             us.at(i) = _us_new(n, i);
 
         input = {DM(xs), DM(us)};
-        result = _dynamic->get_f(input);
+        auto result = _dynamic->get_f(input);
 
-        auto aux = static_cast<std::vector<float>>(result.at(0));
-        _xs_new.row(n+1) << aux[0], aux[1], aux[2];
+        _xs_new.row(n+1) << result(0, 0), result(0, 1), result(0, 2);
 
         //ROS_INFO_STREAM("Xs: " << _xs_new.row(n+1) << "(n=" << n << ")");
         //ROS_INFO_STREAM("Us: " << _us_new.row(n) << "(n=" << n << ")");
@@ -222,7 +213,7 @@ void iLQR::_backward_pass(float regu)
 
     std::vector<float> xs(_xs.cols());
     std::vector<float> us(_us.cols());
-    std::vector<DM> input, result;
+    std::vector<DM> input;
     
     MatrixXd Qf = _cost->get_Qf();
     
@@ -234,7 +225,7 @@ void iLQR::_backward_pass(float regu)
     for (n=_N-1; n>=0; n--)
     {
         for (i=0; i<_Nx; i++)
-            xs.at(i) = _xs(n, i);
+            xs.at(i) = _xs(n, i) - _xref(i);
 
         for (i=0; i<_Nu; i++)
             us.at(i) = _us(n, i);
@@ -282,7 +273,7 @@ void iLQR::_rollout()
     int n, i;
     std::vector<float> xs(_xs.cols());
     std::vector<float> us(_us.cols());
-    std::vector<DM> input, result;
+    std::vector<DM> input;
 
 
     _xs.row(0) = _x0;
@@ -296,13 +287,37 @@ void iLQR::_rollout()
             us.at(i) = _us(n, i);
 
         input = {DM(xs), DM(us)};
-        result = _dynamic->get_f(input);
+        auto result = _dynamic->get_f(input);
 
-        auto aux = static_cast<std::vector<float>>(result.at(0));
-        _xs.row(n+1) << aux[0], aux[1], aux[2];
-
+        _xs.row(n+1) << result(0, 0), result(0, 1), result(0, 2);
         //ROS_INFO_STREAM("Xs: " << _xs.row(n+1) << "(n=" << n << ")");
     }
+}
+
+void iLQR::_filter()
+{
+    double offset = 0.2;
+
+    for (int n=0; n<_N; n++)
+    {
+        if (_us(n, 0) < offset)
+            _us(n, 0) = 0;
+    }
+}
+
+double iLQR::_get_heading(geometry_msgs::Pose pose)
+{    
+    double roll, pitch, yaw;
+
+    tf::Quaternion q(pose.orientation.x,
+                            pose.orientation.y,
+                            pose.orientation.z,
+                            pose.orientation.w);
+
+    tf::Matrix3x3 m(q);
+    m.getRPY(roll, pitch, yaw);
+
+    return yaw;
 }
 
 void iLQR::_goal_callback(const geometry_msgs::PoseStamped::ConstPtr& msg)

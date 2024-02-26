@@ -10,7 +10,9 @@ Cost::Cost()
 Cost::Cost(int N, 
             float Qf_x, float Qf_y, float Qf_theta,
             float Q_x, float Q_y, float Q_theta,
-            float R_v, float R_omega)
+            float R_v, float R_omega,
+            float v_max, float omega_max, 
+            unsigned int eps, unsigned int t)
 {
     _N = N;
 
@@ -25,10 +27,26 @@ Cost::Cost(int N,
     _Q = casadi::DM::diag(Q_values);
     _R = casadi::DM::diag(R_values);
 
+    // Creating Symbloic Functions
     SX x = SX::sym("x", 3);
     SX u = SX::sym("u", 2);
 
-    SX l = (mtimes(x.T(), mtimes(_Q, x)) + mtimes(u.T(), mtimes(_R, u)));
+    // Constraints barrier functions
+    SX c1 = -log( 1.0/eps + ((v_max - u(0)) / (v_max/2)));  
+    SX c2 = -log( 1.0/eps + (u(0) / (v_max/2))); 
+
+    SX c3 = -log(  1.0/eps + ((omega_max - u(1)) / omega_max)); 
+    SX c4 = -log(  1.0/eps + ((u(1) + omega_max) / omega_max)); 
+
+    SX c = (1.0/t) * (c1 + c2 + c3 + c4);
+
+    // ROS_INFO_STREAM("TEST");
+    // ROS_INFO_STREAM(1/eps);
+    // ROS_INFO_STREAM("TEST");
+
+    // Running Cost
+
+    SX l = c + (mtimes(x.T(), mtimes(_Q, x)) + mtimes(u.T(), mtimes(_R, u)));
     SX lf = (mtimes(x.T(), mtimes(_Qf, x)));
 
     SX l_x = jacobian(l, x);
@@ -45,7 +63,7 @@ Cost::Cost(int N,
     _l_uu = Function("l_uu", {x, u}, {l_uu});
 }
 
-double Cost::trajectory_cost(MatrixXd x, MatrixXd u)
+double Cost::trajectory_cost(MatrixXd x, MatrixXd u, VectorXd xref)
 {
     std::size_t Nx = x.rows();
     std::size_t Nu = u.rows();
@@ -72,7 +90,7 @@ double Cost::trajectory_cost(MatrixXd x, MatrixXd u)
     for (n=0; n<_N; n++)
     {
         for (i=0; i<_Nx; i++)
-            xs.at(i) = x(n, i);
+            xs.at(i) = x(n, i) - xref(i);
 
         for (i=0; i<_Nu; i++)
             us.at(i) = u(n, i);
@@ -81,11 +99,11 @@ double Cost::trajectory_cost(MatrixXd x, MatrixXd u)
         J += static_cast<double>(_l(input).at(0));
     }
     
-    for (i=0; i<_Nx; i++)
-            xs.at(i) = (float)x(_N, i);
+    // for (i=0; i<_Nx; i++)
+    //        xs.at(i) = x(_N, i) - xref(i);
 
-    input = {DM(xs)};
-    J += static_cast<double>(_lf(input).at(0));
+    // input = {DM(xs)};
+    // J += static_cast<double>(_lf(input).at(0));
 
     return J;
 }

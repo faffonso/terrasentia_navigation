@@ -41,6 +41,7 @@ Dynamics::Dynamics(double dt, std::string model)
 
         f = x + e_dot * dt;
     }
+
     else {
         ROS_ERROR_STREAM("Not exist this dynamic model" << model);
     }
@@ -55,8 +56,8 @@ Dynamics::Dynamics(double dt, std::string model)
     _f_u = Function("f_u", {x, u}, {f_u});
 }
 
-std::vector<DM> Dynamics::get_f(std::vector<DM> input) {
-    return _f(input);
+MatrixXd Dynamics::get_f(std::vector<DM> input) {
+    return Eigen::Matrix<double, 1, 3>::Map(DM::densify(_f(input).at(0)).nonzeros().data(), 1, 3);
 }
 
 f_prime_t Dynamics::get_f_prime(std::vector<DM> input)

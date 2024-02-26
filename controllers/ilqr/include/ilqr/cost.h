@@ -64,11 +64,17 @@ class Cost
          * @param Q_theta Cost of theta
          * @param R_v Cost of linear velocity
          * @param R_omega Cost of angular velocity
+         * @param v_max Max linear speed
+         * @param omega_max Max angular speed
+         * @param eps Barrier Function eps
+         * @param t Barrier Function t
          */
         Cost(int N, 
             float Qf_x, float Qf_y, float Qf_theta,
             float Q_x, float Q_y, float Q_theta,
-            float R_v, float R_omega);
+            float R_v, float R_omega,
+            float v_max, float omega_max, 
+            unsigned int eps, unsigned int t);
 
         /**
          * @brief Get the l prime object
@@ -85,7 +91,7 @@ class Cost
          * @param u Action control
          * @return double 
          */
-        double trajectory_cost(MatrixXd x, MatrixXd u);
+        double trajectory_cost(MatrixXd x, MatrixXd u, VectorXd xref);
 
         /**
          * @brief Get the Qf object
