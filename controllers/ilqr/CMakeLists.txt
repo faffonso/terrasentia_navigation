@@ -147,6 +147,10 @@ add_library(ilqr
   src/utils/ilqr.cpp
 )
 
+add_library(utils
+  src/utils/utils.cpp
+)
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -160,7 +164,8 @@ add_executable(${PROJECT_NAME}_node
   src/ilqr_node.cpp
   src/utils/dynamics.cpp
   src/utils/cost.cpp
-  src/utils/ilqr.cpp)
+  src/utils/ilqr.cpp
+  src/utils/utils.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

@@ -87,11 +87,11 @@ class NMPC:
 
         # Solver settings
         opts_setting = {
-            'ipopt.max_iter':100, 
+            'ipopt.max_iter':50, 
             'ipopt.print_level':0, 
             'print_time':0, 
-            'ipopt.acceptable_tol':1e-8, 
-            'ipopt.acceptable_obj_change_tol':1e-6}
+            'ipopt.acceptable_tol':1e-10, 
+            'ipopt.acceptable_obj_change_tol':1e-8}
 
         opti.solver('ipopt', opts_setting)
 

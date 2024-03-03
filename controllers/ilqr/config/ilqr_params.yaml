@@ -1,10 +1,14 @@
 ## iterative Linear Quatratic Regulator
 
 controller/iLQR:
+  # Prediction Params
   N:    &N  15
   dt:   &dt 0.1
-  v_max: 1.2
-  omega_max: 2.0
+
+  # Optimization Params
+  shoot_fac:  0.8     # Exponential factor (exp(fac*x))
+  max_iter:   50     # Max iterations of fit function
+  tol:        0.01    # Min tolerance for convergence
 
 controller/cost: 
   N: *N
@@ -12,19 +16,20 @@ controller/cost:
   # Weight Matrices
   Qf_x:     1.0
   Qf_y:     1.0
-  Qf_theta: 1.0
+  Qf_theta: 2.5
 
-  Q_x:      1.5
-  Q_y:      1.5
+  Q_x:      5.0
+  Q_y:      5.0
   Q_theta:  1.0
 
-  R_v:      0.75
-  R_omega:  0.50
+  R_v:      0.01
+  R_omega:  0.01
 
-  v_max: 1.2
-  omega_max: 1.0
-  eps: 100
-  t: 100
+  v_max:      1.0
+  omega_max:  1.0
+
+  eps: 10000
+  t: 1
 
 controller/dynamics:
   dt: *dt

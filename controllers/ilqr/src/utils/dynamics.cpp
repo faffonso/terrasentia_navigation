@@ -24,11 +24,11 @@ Dynamics::Dynamics(double dt, std::string model)
         SX x1_dot = u(0) * cos(x(2));
         SX x2_dot = u(0) * sin(x(2));
         SX x3_dot = u(1);
-        
+
         SX x_dot = vertcat(x1_dot, x2_dot, x3_dot);
 
         f = x + x_dot * dt;
-    }
+     }
 
     // Error-Tracking (Mobile point)
     else if (model == "error-tracking") 

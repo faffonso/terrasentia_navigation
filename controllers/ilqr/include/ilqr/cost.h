@@ -31,6 +31,7 @@ typedef struct l_prime {
     MatrixXd l_u;   // dl/du
     MatrixXd l_xx;  // d^2 l / dx^2
     MatrixXd l_uu;  // d^2 l / du^2 
+    MatrixXd l_ux;  // d^2 l / dudx
 } l_prime_t;
 
 class Cost
@@ -40,10 +41,13 @@ class Cost
             _Nx, // State vector size
             _Nu; // Action control vector size
 
+        float _v_max,       // Max linear speed
+              _omega_max;   // Max angular speed
+
         l_prime_t _l_prime; // Struct contains cost funcion derivatives
         SX _Qf, _Q, _R;     // Weight matrices
         
-        Function _l, _lf, _l_x, _l_u, _l_xx, _l_uu; // CasADi functions of cost interface
+        Function _l, _lf, _l_x, _l_u, _l_xx, _l_uu, _l_ux; // CasADi functions of cost interface
 
     public:
         /**
@@ -99,6 +103,20 @@ class Cost
          * @return MatrixXd 
          */
         MatrixXd get_Qf();
+
+        /**
+         * @brief V_max getter
+         * 
+         * @return float 
+         */
+        float get_v_max();
+
+        /**
+         * @brief Omega_max getter
+         * 
+         * @return float 
+         */
+        float get_omega_max();
 };
 
 #endif // COST_H

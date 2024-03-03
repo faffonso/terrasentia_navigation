@@ -19,6 +19,9 @@ Cost::Cost(int N,
     _Nx = 3;
     _Nu = 2;
 
+    _v_max = v_max;
+    _omega_max = omega_max;
+
     std::vector<double> Qf_values = {Qf_x, Qf_y, Qf_theta};
     std::vector<double> Q_values = {Q_x, Q_y, Q_theta};
     std::vector<double> R_values = {R_v, R_omega};
@@ -49,6 +52,7 @@ Cost::Cost(int N,
 
     SX l_xx = jacobian(l_x, x);
     SX l_uu = jacobian(l_u, u);
+    SX l_ux = jacobian(l_u, x);
 
     // CasADi Functions
     _l = Function("l", {x, u}, {l});
@@ -57,6 +61,7 @@ Cost::Cost(int N,
     _l_u = Function("l_u", {x, u}, {l_u});
     _l_xx = Function("l_xx", {x, u}, {l_xx});
     _l_uu = Function("l_uu", {x, u}, {l_uu});
+    _l_ux = Function("l_ux", {x, u}, {l_ux});
 }
 
 double Cost::trajectory_cost(MatrixXd x, MatrixXd u, VectorXd xref)
@@ -88,6 +93,8 @@ double Cost::trajectory_cost(MatrixXd x, MatrixXd u, VectorXd xref)
         for (i=0; i<_Nx; i++)
             xs.at(i) = x(n, i) - xref(i);
 
+        //xs.at(2) = 1 - cos(xs.at(2));
+
         for (i=0; i<_Nu; i++)
             us.at(i) = u(n, i);
 
@@ -95,11 +102,13 @@ double Cost::trajectory_cost(MatrixXd x, MatrixXd u, VectorXd xref)
         J += static_cast<double>(_l(input).at(0));
     }
     
-    // for (i=0; i<_Nx; i++)
-    //        xs.at(i) = x(_N, i) - xref(i);
+    for (i=0; i<_Nx; i++)
+           xs.at(i) = x(_N, i) - xref(i);
 
-    // input = {DM(xs)};
-    // J += static_cast<double>(_lf(input).at(0));
+    xs.at(2) = 1 - cos(xs.at(2));
+
+    input = {DM(xs)};
+    J += static_cast<double>(_lf(input).at(0));
 
     return J;
 }
@@ -111,6 +120,7 @@ l_prime_t  Cost::get_l_prime(std::vector<DM> input)
     
     _l_prime.l_xx = Eigen::Matrix<double, 3, 3>::Map(DM::densify(_l_xx(input).at(0)).nonzeros().data(), 3, 3);
     _l_prime.l_uu = Eigen::Matrix<double, 2, 2>::Map(DM::densify(_l_uu(input).at(0)).nonzeros().data(), 2, 2);
+    _l_prime.l_ux = Eigen::Matrix<double, 2, 3>::Map(DM::densify(_l_ux(input).at(0)).nonzeros().data(), 2, 3);
 
     return _l_prime;
 }
@@ -121,4 +131,15 @@ MatrixXd Cost::get_Qf()
     Qf = Eigen::Matrix<double, 3, 3>::Map(DM::densify(_Qf).nonzeros().data(), 3, 3);
 
     return Qf;
+}
+
+float Cost::get_v_max()
+{
+    return _v_max;
+}
+
+
+float Cost::get_omega_max()
+{
+    return _omega_max;
 }

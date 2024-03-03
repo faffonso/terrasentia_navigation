@@ -39,17 +39,21 @@ using namespace Eigen;
 class iLQR
 {
     protected:
-        int _N,     // Precition horizon size
-            _Nx=3,  // State vector size
-            _Nu=2;  // Action control vector size
+        int _N,         // Precition horizon size
+            _Nx=3,      // State vector size
+            _Nu=2,      // Action control vector size
+            _max_iter;  // Max iteration in the fit function
         
         float _dt,      // Sampling time [s]
             _v_max,     // Max linear velocity [m/s]
-            _omega_max; // Max angular velocity [rad/s]
+            _omega_max, // Max angular velocity [rad/s]
+            _v_ref,     // Reference linear speed [m/s]
+            _tol;       // Tolerance for convergence
 
         double _J=0,    // Actual trajectory cost
             _J_new=0,   // New trajectory cost
-            _delta_J=0; // Backward pass variation cost
+            _delta_J=0, // Backward pass variation cost
+            _shoot;     // Shooting exp factory
 
         std::string _frame_id,  // Global frame id
                 _odom_topic;    // Odometry topic
@@ -93,9 +97,8 @@ class iLQR
         /**
          * @brief Calculate k and K gains estimating the trajectory cost
          * 
-         * @param regu Regularization term
          */
-        void _backward_pass(float regu);
+        void _backward_pass();
 
         /**
          * @brief Simulate the system using (x_0, us) to get the trajectory xs
@@ -104,10 +107,12 @@ class iLQR
         void _rollout(); 
 
         /**
-         * @brief Filter small values of liner speed to 0
+         * @brief Apply a nonlinear equation to obtain a first estimate of the angular speed
          * 
+         * @param err_heading Angular heading
+         * @return double 
          */
-        void _filter();
+        double _single_shooting(double err_heading);
 
         /**
          * @brief Convert pose quaternion to heading angle
@@ -124,7 +129,7 @@ class iLQR
 
     public:
         /**
-         * @brief Construct a new i L Q R object
+         * @brief Construct a new iLQR object
          * 
          * @param nh Node Handler
          * @param dynamic System dynamics
