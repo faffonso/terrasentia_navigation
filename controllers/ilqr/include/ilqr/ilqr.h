@@ -29,6 +29,7 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "nav_msgs/Odometry.h"
 #include "nav_msgs/Path.h"
+#include "ilqr/ControllerTime.h"
 
 #include "ilqr/dynamics.h"
 #include "ilqr/cost.h"
@@ -40,14 +41,17 @@ class iLQR
 {
     protected:
         int _N,         // Precition horizon size
-            _Nx=3,      // State vector size
-            _Nu=2,      // Action control vector size
             _max_iter;  // Max iteration in the fit function
+
+        
+        const int _Nx=3, // State vector size
+                  _Nu=2; // Action control vector size
         
         float _dt,      // Sampling time [s]
             _v_max,     // Max linear velocity [m/s]
             _omega_max, // Max angular velocity [rad/s]
-            _v_ref,     // Reference linear speed [m/s]
+            _v_ref,     // Ref linear velocity [m/s]
+            _omega_ref, // Ref angular velocity [rad/s]
             _tol;       // Tolerance for convergence
 
         double _J=0,    // Actual trajectory cost
@@ -67,22 +71,23 @@ class iLQR
         // ROS handlers, publishers and subscribers
         ros::NodeHandle _nh;                   
         ros::Subscriber _odom_sub, _goal_sub;  
-        ros::Publisher _cmd_vel_pub, _path_pub;
+        ros::Publisher _cmd_vel_pub, _path_pub, _time_pub;
 
         // ROS msgs
         geometry_msgs::PoseStamped _goal_msg;
         nav_msgs::Odometry _odom_msg;
         nav_msgs::Path _path_msg;
         geometry_msgs::TwistStamped _cmd_vel_msg;
+        ilqr::ControllerTime _time_msg;
 
         VectorXd _x0,   // Initial state
                 _xref,  // Refernece state
                 _x;     // Input state (x0 - xref)
 
         // Auxiliar Matrices and Vectors to comunicate between methods
-        MatrixXd _u0, _ks, _xs, _us, _xs_new, _us_new;
+        MatrixXd _u0, _ks, _xs, _us, _xs_new, _us_new, _T;
         Tensor<float, 3> _Ks;
-        std::vector<float> _alphas;
+        std::vector<float> _alphas, _ur;
 
         /**
          * @brief Simulate the system using (x_0, us_new) to get the trajectory xs_new
@@ -98,13 +103,14 @@ class iLQR
          * @brief Calculate k and K gains estimating the trajectory cost
          * 
          */
-        void _backward_pass();
+        void _backward_pass(float regu);
 
         /**
          * @brief Simulate the system using (x_0, us) to get the trajectory xs
          * 
+         * @param type Select dynamic model (0 = error-tracking, 1 = unicyle kinematic)
          */
-        void _rollout(); 
+        void _rollout(bool type); 
 
         /**
          * @brief Apply a nonlinear equation to obtain a first estimate of the angular speed

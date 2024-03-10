@@ -1,7 +1,7 @@
 <launch>
     <!-- Open World and TS -->
-    <!-- <include file="$(find terrasentia_world)/launch/basic_world.launch"/>
-    <include file="$(find terrasentia_description)/launch/launch_default_ts3.launch"/> -->
+    <include file="$(find terrasentia_world)/launch/basic_world.launch"/>
+    <include file="$(find terrasentia_description)/launch/launch_default_ts3.launch"/>
 
     <!-- RViz -->
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find nmpc)/config/rviz/nav.rviz"/>

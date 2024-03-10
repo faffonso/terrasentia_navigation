@@ -15,6 +15,9 @@ iLQR::iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost,
     _v_max = cost->get_v_max();
     _omega_max = cost->get_omega_max();
 
+    _v_ref = 0.2;
+    _omega_ref = 0.0;
+
     _x    = VectorXd(_Nx);
     _x0   = VectorXd(_Nx);
     _xref = VectorXd(_Nx);
@@ -29,8 +32,12 @@ iLQR::iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost,
     _Ks = Tensor<float, 3>(_N, _Nu, _Nx);
 
     _alphas = std::vector<float>(8);
+    _ur = std::vector<float>(_Nu);
+
     for (int i = 0; i < 8; ++i) 
-        _alphas[i] = std::pow(0.5, i);
+        _alphas[i] = std::pow(1.1, -std::pow(i, 2));
+
+    _T = MatrixXd(3, 3);
 
     nh.getParam("/odom/frame_id", _odom_topic);
     nh.getParam("/odom/frame_id", _frame_id);
@@ -39,7 +46,8 @@ iLQR::iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost,
     nh.getParam("/controller/iLQR/tol", _tol);
 
     nh.getParam("/controller/iLQR/v_ref", _v_ref);
-
+    nh.getParam("/controller/iLQR/shoot_fac", _shoot);
+  
     _odom_msg.pose.pose.orientation.w = 1.0;
 
     _goal_msg.pose.position.x = 0.0;
@@ -51,20 +59,19 @@ iLQR::iLQR(ros::NodeHandle nh, Dynamics* dynamic, Cost* cost,
 
     _path_pub = nh.advertise<nav_msgs::Path>("/terrasentia/path", 5);
     _cmd_vel_pub = nh.advertise<geometry_msgs::TwistStamped>("/terrasentia/cmd_vel", 5);  
-
+    _time_pub = nh.advertise<ilqr::ControllerTime>("/terrasentia/ilqr_time", 5);  
 }
 
 void iLQR::run()
 {
-    ros::Time init = ros::Time::now();
-
     double odom_heading, goal_heading, heading;
     MatrixXd us(_N, _Nu);
+    ros::Time init = ros::Time::now();
 
     odom_heading = this->_get_heading(_odom_msg.pose.pose);
     goal_heading = this->_get_heading(_goal_msg.pose);
 
-    _x0 << _odom_msg.pose.pose.position.x,
+    _x << _odom_msg.pose.pose.position.x,
           _odom_msg.pose.pose.position.y,
           odom_heading;
 
@@ -72,19 +79,30 @@ void iLQR::run()
              _goal_msg.pose.position.y,
              goal_heading;
 
-    // us.setZero();
+    us.setZero();
 
-    heading = atan2(sin(odom_heading - goal_heading), cos(odom_heading - goal_heading));
-    auto us0 = this->_single_shooting(heading);
+    _T << cos(odom_heading), sin(odom_heading), 0,
+            -sin(odom_heading), cos(odom_heading), 0,
+            0, 0, 1;
 
-    us.col(0).setConstant(_v_ref);
-    us.col(1).setConstant(us0);
+    _x0 = _T * (_xref - _x);
 
+    _x0(2) = atan2(sin(_x0(2)), cos(_x0(2)));
+
+    if (_x0(2) > 0)
+        _omega_ref = 0.05;
+    else
+        _omega_ref = -0.05;
+
+    _ur.at(0) = _v_ref;
+    _ur.at(1) = _omega_ref;
 
     this->fit(us);
 
-    // Gen Path msg
-    this->_rollout();
+    _time_msg.time = (ros::Time::now() - init).toSec();
+
+    _x0 = _x;
+    this->_rollout(1);
 
     geometry_msgs::PoseStamped pose;
 
@@ -111,6 +129,7 @@ void iLQR::run()
     _cmd_vel_msg.twist.angular.z = _us(0, 1);
 
     _cmd_vel_pub.publish(_cmd_vel_msg);
+    _time_pub.publish(_time_msg);
 
     ROS_INFO_STREAM("Run iLQR | State " << _x0(0) << " " << _x0(1) << " " << _x0(2) << 
                             " | Reference " << _xref(0) << " " << _xref(1) << " " << _xref(2) << 
@@ -122,19 +141,30 @@ void iLQR::fit(MatrixXd us)
 {
     _us = us;
 
-    this->_rollout();
+    int iter;
+    double regu      = 1.0;
+    double max_regu  = 1000.0;
+    double min_regu  = 0.001;
+
+    this->_rollout(0);
+    // ROS_INFO_STREAM("Rollout");
 
     _J = _cost->trajectory_cost(_xs, _us, _xref);
-    //ROS_INFO_STREAM("Trajectory cost: " << _J);
+    // ROS_INFO_STREAM("Trajectory cost: " << _J);
 
-    for (int iter=0; iter<_max_iter; iter++)
+    // ROS_INFO_STREAM("Init time " << ros::Time::now() - init);
+
+    for (iter=0; iter<_max_iter; iter++)
     {
+        // ROS_INFO_STREAM("Iteration " << ros::Time::now() - init);
 
-        this->_backward_pass(); 
+        this->_backward_pass(regu); 
+
+        // ROS_INFO_STREAM("Backward pass " << ros::Time::now() - init);
 
         if (std::abs(_delta_J) < _tol)
         {
-            //ROS_INFO_STREAM("Early stop");
+            // ROS_INFO_STREAM("Early stop | _delta_J" << _delta_J);
             break;
         }
 
@@ -143,7 +173,7 @@ void iLQR::fit(MatrixXd us)
             this->_forward_pass(alpha);
             _J_new = _cost->trajectory_cost(_xs_new, _us_new, _xref);
 
-            //ROS_INFO_STREAM("Trying converge " << _J_new << " on " << _J << "Using regu " << regu);
+            // ROS_INFO_STREAM("Trying converge " << _J_new << " on " << _J );
 
             if (std::abs(_J_new) < std::abs(_J))
             {
@@ -151,20 +181,30 @@ void iLQR::fit(MatrixXd us)
                 _xs = _xs_new;
                 _us = _us_new;
 
+                regu *= 0.75;
+
                 break;
             }
         }
+
+        regu *= 2.20;
+        if (regu > max_regu)
+        { 
+            break;
+        }
+        regu = std::min(std::max(regu, min_regu), max_regu);
     }
 
-    ROS_INFO_STREAM("Final fit");
+    ROS_INFO_STREAM("Final fit | Cost " << _J <<  " | Final State " << _xs(_N, 0) << " " <<  _xs(_N, 1) << " " << _xs(_N, 2) << " | Iter " << iter << " | Regu " << regu);
+    
     // ROS_INFO_STREAM(_xs);
-    ROS_INFO_STREAM(_us);
+    // ROS_INFO_STREAM(_us);
 }
 
 void iLQR::_forward_pass(float alpha)
 {
     int n, i, j;
-    MatrixXd Ks(_Nu, _Nx), xs_aux(1, 3);
+    MatrixXd Ks(_Nu, _Nx), xs_aux(1, _Nx);
 
     std::vector<float> xs(_xs.cols());
     std::vector<float> us(_us.cols());
@@ -188,7 +228,7 @@ void iLQR::_forward_pass(float alpha)
         for (i=0; i<_Nu; i++)
             us.at(i) = _us_new(n, i);
 
-        input = {DM(xs), DM(us)};
+        input = {DM(xs), DM(us), DM(_ur)};
         auto result = _dynamic->get_f(input);
 
         _xs_new.row(n+1) << result(0, 0), result(0, 1), result(0, 2);
@@ -198,7 +238,7 @@ void iLQR::_forward_pass(float alpha)
     }
 }
 
-void iLQR::_backward_pass()
+void iLQR::_backward_pass(float regu)
 {    
     int n, i, j;
     double J=0;
@@ -208,6 +248,7 @@ void iLQR::_backward_pass()
 
     MatrixXd k, K;
     MatrixXd Q_x, Q_u, Q_xx, Q_uu, Q_ux; 
+    MatrixXd Q_uu_reg, Q_ux_reg;
 
     std::vector<float> xs(_xs.cols());
     std::vector<float> us(_us.cols());
@@ -215,19 +256,23 @@ void iLQR::_backward_pass()
     
     MatrixXd Qf = _cost->get_Qf();
     
-    MatrixXd s = (Qf * _xs.row(_N).transpose() - _xref).transpose();
+    MatrixXd s = (Qf * _xs.row(_N).transpose()).transpose();
     MatrixXd S = Qf;
+
+    MatrixXd regu_I = regu * MatrixXd::Identity(3, 3);
 
     for (n=_N-1; n>=0; n--)
     {
+
         for (i=0; i<_Nx; i++)
-            xs.at(i) = _xs(n, i) - _xref(i);
+            xs.at(i) = _xs(n, i);
 
         for (i=0; i<_Nu; i++)
             us.at(i) = _us(n, i);
 
-        input = {DM(xs), DM(us)};
+        input = {DM(xs), DM(us), DM(_ur)};
         f_prime = _dynamic->get_f_prime(input);
+        input = {DM(xs), DM(us)}; 
         l_prime = _cost->get_l_prime(input);
 
         Q_x = l_prime.l_x + s * f_prime.f_x;
@@ -240,13 +285,17 @@ void iLQR::_backward_pass()
         Q_uu = l_prime.l_uu + f_prime.f_u.transpose() * S * f_prime.f_u;
         Q_ux = l_prime.l_ux + f_prime.f_u.transpose() * S * f_prime.f_x;
 
-        k = - Q_uu.completeOrthogonalDecomposition().pseudoInverse() * Q_u;
-        K = - Q_uu.completeOrthogonalDecomposition().pseudoInverse() * Q_ux;
+        Q_uu_reg = Q_uu + f_prime.f_u.transpose() * regu_I * f_prime.f_u;
+        Q_ux_reg = Q_ux + f_prime.f_u.transpose() * regu_I * f_prime.f_x;
+
+        k = - Q_uu_reg.inverse() * Q_u;
+        K = - Q_uu_reg.inverse() * Q_ux_reg;
 
         _ks.row(n) = k.transpose();
         for (i=0; i<_Nu; i++)
             for (j=0; j<_Nx; j++)
                 _Ks(n, i, j) = K(i, j);
+
 
         s = Q_x + K.transpose() * Q_u + Q_ux.transpose() * k + K.transpose() * Q_uu * k;
         S = Q_xx + K.transpose() * Q_uu * K + K.transpose() * Q_ux + Q_ux.transpose() * K;
@@ -261,13 +310,14 @@ void iLQR::_backward_pass()
 
 }
 
-void iLQR::_rollout()
+void iLQR::_rollout(bool type)
 {
     int n, i;
     std::vector<float> xs(_xs.cols());
     std::vector<float> us(_us.cols());
     std::vector<DM> input;
 
+    MatrixXd result = MatrixXd(1, _Nx);
 
     _xs.row(0) = _x0;
 
@@ -279,11 +329,17 @@ void iLQR::_rollout()
         for (i=0; i<_Nu; i++)
             us.at(i) = _us(n, i);
 
-        input = {DM(xs), DM(us)};
-        auto result = _dynamic->get_f(input);
-        
+        if (type == 0)
+        {
+            input = {DM(xs), DM(us), DM(_ur)};   
+            result = _dynamic->get_f(input);
+        }
+        else if (type == 1){
+            input = {DM(xs), DM(us)};
+            result = _dynamic->get_ns(input);
+        }
         _xs.row(n+1) << result(0, 0), result(0, 1), result(0, 2);
-        //ROS_INFO_STREAM("Xs: " << _xs.row(n+1) << "(n=" << n << ")");
+        // ROS_INFO_STREAM("Xs: " << _xs.row(n+1) << "(n=" << n << ")");
     }
 }
 

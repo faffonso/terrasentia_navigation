@@ -35,7 +35,10 @@ class Dynamics
         std::string _model;     // Dynamic model (standard or error-tracking)
         f_prime_t _f_prime;     // Contains dynamic jacobians
         
-        Function _f, _f_x, _f_u;    // CasADi function
+        Function _f, _f_x, _f_u, _ns;    // CasADi function
+
+        static constexpr int _Nx=3, // State vector size
+                             _Nu=2; // Action control vector size
 
     public:
         /**
@@ -53,12 +56,19 @@ class Dynamics
         Dynamics(double dt, std::string model);
 
         /**
-         * @brief Get the f object (next dynamic step)
+         * @brief Get the next state using kinmematic unicycle model
          * 
          * @param input State and Action control {x, u}
-         * @return std::vector<casadi::DM> 
+         * @return MatrixXd 
          */
-        
+        MatrixXd get_ns(std::vector<DM> input);
+
+        /**
+         * @brief Get the next step of error-tracking model
+         * 
+         * @param input State and Action control {x, u, ur}
+         * @return std::vector<casadi::DM> 
+         */        
         MatrixXd get_f(std::vector<DM> input);
 
         /**

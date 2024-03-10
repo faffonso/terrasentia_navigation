@@ -8,7 +8,7 @@ from nmpc.nmpc_controller import NMPC
 def main():
     rospy.init_node('nmpc_controller_node')
 
-    rate = rospy.Rate(20) 
+    rate = rospy.Rate(5) 
 
     params = rospy.get_param("controller/NMPC")
     control = NMPC(**params)

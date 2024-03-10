@@ -37,9 +37,10 @@ typedef struct l_prime {
 class Cost
 {
     protected:
-        int _N,  // Precition horizon size
-            _Nx, // State vector size
-            _Nu; // Action control vector size
+        int _N;  // Precition horizon size
+        
+        static constexpr int _Nx=3, // State vector size
+                             _Nu=2; // Action control vector size
 
         float _v_max,       // Max linear speed
               _omega_max;   // Max angular speed

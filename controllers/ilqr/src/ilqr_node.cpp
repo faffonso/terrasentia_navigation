@@ -10,15 +10,15 @@
 int main(int argc, char** argv) 
 {
     ros::init(argc, argv, "ilqr_node");
-    ros::NodeHandle nh;
-
+    ros::NodeHandle nh;   
+    
     int N;
     float dt;
 
     Dynamics dynamic;
     Cost cost;
 
-    ros::Rate rate(50);
+    ros::Rate rate(15);
 
     if (!init_dynamics(dynamic, nh)) 
         return 1;

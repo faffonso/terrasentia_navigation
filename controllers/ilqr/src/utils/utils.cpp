@@ -12,10 +12,9 @@ bool init_dynamics(Dynamics& dynamic, ros::NodeHandle& nh) {
         ROS_ERROR_STREAM("Dynamic model (model) could not be read.");
         return false;
     }
+    dynamic = Dynamics(dt, model);
 
     ROS_INFO_STREAM(GREEN << "Dynamic Model Object Created!" << RESET);
-
-    dynamic = Dynamics(dt, model);
     return true;
 }
 
@@ -92,9 +91,8 @@ bool init_cost(Cost& cost, ros::NodeHandle& nh) {
         ROS_ERROR_STREAM("Barrier Function t could not be read.");
         return 0;
     }
-
-    ROS_INFO_STREAM(GREEN << "Cost Object Created!" << RESET);
-
     cost = Cost(N, Qf_x, Qf_y, Qf_theta, Q_x, Q_y, Q_theta, R_v, R_omega, v_max, omega_max, eps, t);
+    
+    ROS_INFO_STREAM(GREEN << "Cost Object Created!" << RESET);
     return true;
 }

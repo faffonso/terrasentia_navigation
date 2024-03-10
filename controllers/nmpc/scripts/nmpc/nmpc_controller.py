@@ -2,6 +2,7 @@
 
 import casadi as ca
 import numpy as np
+import os
 
 import rospy
 import time
@@ -34,6 +35,7 @@ class NMPC:
         self.cmd_vel = TwistStamped()
 
         # Optimization struct
+        os.environ['IPOPT_NUM_THREADS'] = '5'
         opti = ca.Opti()
 
         # State space
@@ -87,7 +89,7 @@ class NMPC:
 
         # Solver settings
         opts_setting = {
-            'ipopt.max_iter':50, 
+            'ipopt.max_iter':100, 
             'ipopt.print_level':0, 
             'print_time':0, 
             'ipopt.acceptable_tol':1e-10, 
