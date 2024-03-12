@@ -10,6 +10,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import numpy as np
 import colorful as cf
 import math
+import matplotlib.pyplot as plt
 
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
@@ -79,10 +80,9 @@ class Wp_gen():
         rospy.loginfo(cf.orange(f'Line2 m={m2}, b={c2}'))
 
         x, y = self.get_target(m1, m2, c1, c2)
-        #print(f'x={x:.2f}, y:{y:.2f}')
-        #print(f'rw:{self.row_width}, rh:{self.row_height}, iw:{self.img_width}, ih:{self.img_height}')
-        x *= self.row_width / self.img_width
-        y *= self.row_height / self.img_height
+
+        #x *= self.row_width / self.img_width
+        #y *= self.row_height / self.img_height
 
         x -= 0.6
         rospy.loginfo(cf.orange(f'Y={y}, X={x}'))
@@ -99,7 +99,7 @@ class Wp_gen():
         self.goal_msg.pose.position.x = self.odom_msg.pose.pose.position.x + x * np.sin(heading_global) + y * np.cos(heading_global)
         self.goal_msg.pose.position.y = self.odom_msg.pose.pose.position.y - (x * np.cos(heading_global) - y * np.sin(heading_global))
 
-        q = quaternion_from_euler(0.0, 0.0, - heading + heading_global)
+        q = quaternion_from_euler(0.0, 0.0, - 2 * heading + heading_global)
 
         self.goal_msg.pose.orientation.x = q[0]
         self.goal_msg.pose.orientation.y = q[1]
@@ -131,23 +131,47 @@ class Wp_gen():
         m, c = self._convert_origin(m1, m2, c1, c2)
 
         # Get x and y resolution [m/px]^2
-        x_regu = (self.row_width / self.img_width)**2
-        y_regu = (self.row_height / self.img_height)**2
+        x_regu = (self.img_width / self.row_width)
+        y_regu = (self.img_height / self.row_height)
         
         # Solve equation using Euclidean distance and line equation
         x1, x2 = self._solve_quadratic(
-                    m**2 + (x_regu/y_regu),
-                    2 * m * c,
-                    c**2 - self.D**2/y_regu)
+                    1 + m**2 * (x_regu**2 / y_regu**2),
+                    2 * m * c * (x_regu / y_regu**2),
+                    c**2 / y_regu**2 - self.D**2)
         
         # Get corresponding y and return the possible value
-        y1 = x1 * m + c
-        y2 = x2 * m + c
+        y1 = x1 * m * x_regu + c
+        y2 = x2 * m * x_regu + c
+
+        print(f'Sol 1 x={x1} and y={y1} using {x1 * x_regu}')
+        print(f'Sol 2 x={x2} and y={y2} using {x2 * x_regu}')
+
+        x = np.linspace(-self.img_width/2, self.img_width/2, 100)
+        y = m * x + c
+
+        # # Plot lines
+        # plt.plot(x1 * x_regu, y1, 'ro') 
+        # plt.plot(x2 * x_regu, y2, 'ro') 
+        # plt.plot(x, y, label='m')
+        
+        # # Add labels and legend
+        # plt.xlabel('x')
+        # plt.ylabel('y')
+        # plt.legend()
+
+        # plt.xlim(-self.img_width/2, self.img_width/2) 
+        # plt.ylim(0, self.img_height)  
+    
+        
+        # # Show plot
+        # plt.grid(True)
+        # plt.show()
 
         if (y1 >= 0 and y1 <= self.img_height):
-            return x1, y1
+            return x1, y1 / y_regu
         elif (y2 >= 0 and y2 <= self.img_height):
-            return x2, y2
+            return x2, y2 / y_regu
         else:
             rospy.logerr("Waypoint doesn't match with crop lines")
             return None
@@ -157,13 +181,36 @@ class Wp_gen():
         self.odom_msg = msg
 
     def _convert_origin(self, m1, m2, c1, c2):
-
-        widht_min = -self.img_width/2
-        widht_max = self.img_width/2
+        print(f'Receive {m1}, {m2}, {c1}, {c2}')
 
         m = -(m1 + m2) / 2
         c = -(c1 + c2) / 2 
-        c -= self.img_width
+
+        aux = -c / self.img_height
+        c += aux*self.img_width
+
+        # x = np.linspace(-self.img_width/2, self.img_width/2, 100)
+        # y = m * x + c
+        # y1 = - m1 * x - c1 + aux*self.img_width
+        # y2 = - m2 * x - c2 + aux*self.img_width
+
+        # # Plot lines
+        # plt.plot(x, y1, label='m1')
+        # plt.plot(x, y2, label='m2')
+        # plt.plot(x, y, label='m')
+        
+        # # Add labels and legend
+        # plt.xlabel('x')
+        # plt.ylabel('y')
+        # plt.legend()
+
+        # plt.xlim(-self.img_width/2, self.img_width/2) 
+        # plt.ylim(0, self.img_height)  
+    
+        
+        # # Show plot
+        # plt.grid(True)
+        # plt.show()
 
         return m, c
 
