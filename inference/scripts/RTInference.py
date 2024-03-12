@@ -34,8 +34,6 @@ device = torch.device("cpu")
 ############ GLOBAL PARAMS ############
 global runid
 runid = '18-02-2024_20-30-26'
-global SHOW
-SHOW = True
 
 os.chdir('..')
 print(os.getcwd())
@@ -50,13 +48,14 @@ class RTinference:
         ########## PARAMS LOAD ##########
         result = self.read_params_from_json(query_id=runid)
         if result is not None:
-            print('params.json query sucessful.')
+            print('params.json query sucessful.', runid)
             self.mean = [result['mean0'], result['mean1'], result['mean2'], result['mean3']]
             self.std = [result['std0'], result['std1'], result['std2'], result['std3']]
         else:
-            print("No data found for the specified id.")
+            print(cf.red(f"No data found for the specified id.\n {runid}"))
             self.mean = None
             self.std = None
+            exit()
 
         ########## PLOT ##########
         self.fig, _ = plt.subplots(figsize=(8, 5), frameon=True)
@@ -83,7 +82,6 @@ class RTinference:
             except Exception as e:
                 print(e)
                 pass
-            
             rate.sleep()
 
     ############### ROS INTEGRATION ###############
@@ -91,14 +89,14 @@ class RTinference:
         self.data = data
 
     def run(self):
-        self.generate_image(self.data)
-        self.image = self.get_image()
+        if self.data is not None: # check for consistency
+            self.generate_image(self.data)
+            self.image, raw_image = self.get_image()
 
-        self.response = self.inference(self.image)
+            self.response = self.inference(self.image)
 
-        image_np = np.squeeze(self.image.detach().cpu().numpy())
-        ros_image = self.bridge.cv2_to_imgmsg(image_np*250, encoding="passthrough")
-        self.pub.publish(ros_image)
+            ros_image = self.plot(self.response, raw_image)
+            self.pub.publish(ros_image)
 
     def rt_inference_service(self, req):
         rospy.loginfo(cf.yellow(f"Received request {req}"))
@@ -138,33 +136,34 @@ class RTinference:
         self.model.eval()
 
     ############### DATA EXTRACTION ###############
-
     def read_params_from_json(self, filename='./models/params.json', query_id=None):
         if os.getcwd() == 'scripts':
             os.chdir('..')
         try:
             with open(filename, 'r') as file:
                 data = json.load(file)
+                for item in data:
+                    if query_id is not None and item['id'] == query_id:
+                        result_dict = {
+                            'id': item['id'],
+                            'mean0': item['mean0'],
+                            'mean1': item['mean1'],
+                            'mean2': item['mean2'],
+                            'mean3': item['mean3'],
+                            'std0': item['std0'],
+                            'std1': item['std1'],
+                            'std2': item['std2'],
+                            'std3': item['std3']
+                        }
+                        return result_dict
 
-                if query_id is not None and data['id'] != query_id:
-                    return None  # Return None if the queried id does not match
-
-                result_dict = {
-                    'id': data['id'],
-                    'mean0': data['mean0'],
-                    'mean1': data['mean1'],
-                    'mean2': data['mean2'],
-                    'mean3': data['mean3'],
-                    'std0': data['std0'],
-                    'std1': data['std1'],
-                    'std2': data['std2'],
-                    'std3': data['std3']
-                }
-
-                return result_dict
+                # If the loop completes without finding a matching ID
+                print(cf.red(f"No data found for the specified id.\n {query_id}"))
+                return None
 
         except (FileNotFoundError, json.decoder.JSONDecodeError, KeyError):
             return None
+
 
     def generate_image(self, data):
         lidar = data.ranges
@@ -216,8 +215,10 @@ class RTinference:
 
         # crop image to 224x224 in the pivot point (112 to each side)
         # image = image[100:400, :, :]
-        image = image[:,:, 1]
         image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_LINEAR)
+
+        raw_image = image
+        image = image[:,:, 1]
 
         # add one more layer to image: [1, 1, 224, 224] as batch size
         image = np.expand_dims(image, axis=0)
@@ -225,7 +226,7 @@ class RTinference:
 
         # convert to torch
         image = torch.from_numpy(image).float()
-        return image
+        return image, raw_image
 
     ############### INFERENCE AND PLOT ##############
 
@@ -281,6 +282,38 @@ class RTinference:
         b2 = -q2/w2
 
         return [m1, m2, b1, b2]
+
+    def plot(self, response, raw_image):
+        m1 = response[0]
+        m2 = response[1]
+        b1 = response[2]
+        b2 = response[3]
+
+        # Calculate the endpoints of the line
+        x11 = 0
+        y11 = int(m1 * x11 + b1)
+
+        x12 = raw_image.shape[1]  # Width of the image
+        y12 = int(m1 * x12 + b1)
+
+        # Draw the line on the image
+        line_color = (0, 0, 255)  
+        line_thickness = 2
+        cv2.line(raw_image, (x11, y11), (x12, y12), line_color, line_thickness)
+
+        # Calculate the endpoints of the line
+        x21 = 0
+        y21 = int(m2 * x21 + b2)
+
+        x22 = raw_image.shape[1]  # Width of the image
+        y22 = int(m2 * x22 + b2)
+
+        cv2.line(raw_image, (x21, y21), (x22, y22), line_color, line_thickness)
+
+        #image_np = np.squeeze(raw_image) #.detach().cpu().numpy())
+        ros_image = self.bridge.cv2_to_imgmsg(raw_image, encoding="passthrough")
+
+        return ros_image
 
 ############### MAIN ###############
 
