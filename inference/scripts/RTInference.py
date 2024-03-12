@@ -33,7 +33,7 @@ device = torch.device("cpu")
 
 ############ GLOBAL PARAMS ############
 global runid
-runid = '02-02-2024_00-45-55'
+runid = '18-02-2024_20-30-26'
 global SHOW
 SHOW = True
 
