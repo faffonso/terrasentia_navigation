@@ -56,7 +56,6 @@ add_message_files(
 add_service_files(
   FILES
   RTInferenceService.srv
-  RTInferenceServiceShow.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -160,7 +159,6 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/RTInference.py
-  scripts/RTInferenceV2.py  
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
