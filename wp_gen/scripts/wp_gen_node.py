@@ -9,7 +9,7 @@ from wp_gen.wp_gen import Wp_gen
 def main():
     rospy.init_node('wp_gen_node')
 
-    rate = rospy.Rate(5) 
+    rate = rospy.Rate(2) 
 
     params = rospy.get_param("wp_gen/img")
 

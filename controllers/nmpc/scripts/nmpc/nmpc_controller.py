@@ -60,13 +60,7 @@ class NMPC:
         x0 = self.opt_x0.T
         opti.subject_to(opt_states[0, :] == x0)
 
-        # Subject to dynamic system
-        for k in range(N):
-            xs = opt_states[k, :]
-            us = opt_controls[k, :]
-
-            x_next = xs + self.f(xs, us).T * dt
-            opti.subject_to(opt_states[k+1, :] == x_next)
+ros
     
         # Cost functions
         obj = 0

@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     Dynamics dynamic;
     Cost cost;
 
-    ros::Rate rate(15);
+    ros::Rate rate(12);
 
     if (!init_dynamics(dynamic, nh)) 
         return 1;

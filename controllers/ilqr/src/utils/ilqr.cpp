@@ -131,10 +131,10 @@ void iLQR::run()
     _cmd_vel_pub.publish(_cmd_vel_msg);
     _time_pub.publish(_time_msg);
 
-    ROS_INFO_STREAM("Run iLQR | State " << _x0(0) << " " << _x0(1) << " " << _x0(2) << 
-                            " | Reference " << _xref(0) << " " << _xref(1) << " " << _xref(2) << 
-                            " | Action control " << _us(0, 0) << " " << _us(0, 1 ) << 
-                            " | Time " << ros::Time::now() - init << " seconds");
+    //ROS_INFO_STREAM("Run iLQR | State " << _x0(0) << " " << _x0(1) << " " << _x0(2) << 
+    //                        " | Reference " << _xref(0) << " " << _xref(1) << " " << _xref(2) << 
+    //                        " | Action control " << _us(0, 0) << " " << _us(0, 1 ) << 
+    //Z                        " | Time " << ros::Time::now() - init << " seconds");
 }
 
 void iLQR::fit(MatrixXd us)
@@ -195,7 +195,7 @@ void iLQR::fit(MatrixXd us)
         regu = std::min(std::max(regu, min_regu), max_regu);
     }
 
-    ROS_INFO_STREAM("Final fit | Cost " << _J <<  " | Final State " << _xs(_N, 0) << " " <<  _xs(_N, 1) << " " << _xs(_N, 2) << " | Iter " << iter << " | Regu " << regu);
+    //ROS_INFO_STREAM("Final fit | Cost " << _J <<  " | Final State " << _xs(_N, 0) << " " <<  _xs(_N, 1) << " " << _xs(_N, 2) << " | Iter " << iter << " | Regu " << regu);
     
     // ROS_INFO_STREAM(_xs);
     // ROS_INFO_STREAM(_us);

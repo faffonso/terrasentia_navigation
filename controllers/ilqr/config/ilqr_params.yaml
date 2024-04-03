@@ -26,8 +26,8 @@ controller/cost:
   R_v:      0.1
   R_omega:  0.05
 
-  v_max:      1.0
-  omega_max:  1.5
+  v_max:      0.8
+  omega_max:  1.2
 
   eps: 100
   t: 100

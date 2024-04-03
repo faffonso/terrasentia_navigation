@@ -51,6 +51,11 @@ def plot_trajectory(trajectory_xs, trajectory_ys, x_ref, y_ref, heading_ref):
 
         plt.quiver(x, y, dx, dy, angles='xy', scale_units='xy', scale=1, color='blue')
 
+    max_val = max(max(trajectory_xs), max(trajectory_ys), max(x_ref), max(y_ref))
+    
+    plt.xlim(-15.0, 15.0)
+    plt.ylim(-15.0, 15.0)
+
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.title('Robot Trajectory')
@@ -103,7 +108,7 @@ if __name__ == "__main__":
     ind = 0
     tot2 = 0
     for t in ilqr_time:
-        tot += 1/t
+        #tot += 1/t
         tot2 += t
         ind += 1
 
