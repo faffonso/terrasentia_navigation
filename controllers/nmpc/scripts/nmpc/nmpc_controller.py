@@ -12,6 +12,8 @@ from geometry_msgs.msg import TwistStamped, PoseStamped
 
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
+from ilqr.msg import ControllerTime
+
 class NMPC:
     def __init__(self, dt=0.1, N=10, Q_x=1.0, Q_y=1.0, Q_theta=1.0, R_v=1.0, R_omega=1.0, v_max=1.0, omega_max=1.0):
         self.dt = dt
@@ -29,10 +31,12 @@ class NMPC:
 
         self.path_publisher     = rospy.Publisher("/terrasentia/path", Path, queue_size=1)
         self.cmd_vel_publisher  = rospy.Publisher("/terrasentia/cmd_vel", TwistStamped, queue_size=10)
+        self.time_cost_publisher  = rospy.Publisher("/terrasentia/ilqr_time", ControllerTime, queue_size=10)
 
         self.odom    = Odometry()
         self.goal    = PoseStamped()
         self.cmd_vel = TwistStamped()
+        self.nmpc_time = ControllerTime()
 
         # Optimization struct
         os.environ['IPOPT_NUM_THREADS'] = '5'
@@ -59,9 +63,15 @@ class NMPC:
         # Init condition
         x0 = self.opt_x0.T
         opti.subject_to(opt_states[0, :] == x0)
-
-ros
     
+        # Subject to dynamic system
+        for k in range(N):
+            xs = opt_states[k, :]
+            us = opt_controls[k, :]
+
+            x_next = xs + self.f(xs, us).T * dt
+            opti.subject_to(opt_states[k+1, :] == x_next)
+
         # Cost functions
         obj = 0
         xref = self.opt_xref
@@ -83,7 +93,7 @@ ros
 
         # Solver settings
         opts_setting = {
-            'ipopt.max_iter':100, 
+            'ipopt.max_iter':50, 
             'ipopt.print_level':0, 
             'print_time':0, 
             'ipopt.acceptable_tol':1e-10, 
@@ -104,6 +114,7 @@ ros
         xs = np.tile(x0, (self.N+1, 1))
 
         x, u = self.fit(xs, xref, x0, u0)
+        print(u)
 
         path_msg = Path()
         path_msg.header.stamp = rospy.Time.now()
@@ -120,6 +131,8 @@ ros
 
         end_time = time.time()
         elapsed_time = end_time - start_time
+        self.nmpc_time = elapsed_time
+        self.time_cost_publisher.publish(self.nmpc_time)
         print(f'NMPC Run | State {x0} | Reference {xref} | Action control {u[0]} | Time {elapsed_time:.3f} seconds')
         
     def state_from_pose(self, pose):

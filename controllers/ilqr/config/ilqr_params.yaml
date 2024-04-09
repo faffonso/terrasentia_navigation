@@ -8,7 +8,7 @@ controller/iLQR:
 
   # Optimization Params
   shoot_fac:  0.1     # Exponential factor (exp(fac*x))
-  max_iter:   50     # Max iterations of fit function
+  max_iter:   50      # Max iterations of fit function
   tol:        0.01    # Min tolerance for convergence
 
 controller/cost: 

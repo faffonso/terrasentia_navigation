@@ -33,7 +33,7 @@ device = torch.device("cpu")
 
 ############ GLOBAL PARAMS ############
 global runid
-runid = '18-02-2024_20-30-26'
+runid = '06-04-2024_21-22-37'
 
 os.chdir('..')
 print(os.getcwd())
@@ -168,8 +168,8 @@ class RTinference:
     def generate_image(self, data):
         lidar = data.ranges
         
-        min_angle = np.deg2rad(0)
-        max_angle = np.deg2rad(180) # lidar range
+        min_angle = data.angle_min
+        max_angle = data.angle_max # lidar range
         angle = np.linspace(min_angle, max_angle, len(lidar), endpoint = False)
 
         # convert polar to cartesian:
@@ -177,8 +177,8 @@ class RTinference:
         # y = r * sin(theta)
         # where r is the distance from the lidar (x in lidar)
         # and angle is the step between the angles measure in each distance (angle(lidar.index(x))
-        xl = [x*np.cos(angle[lidar.index(x)]) for x in lidar]
-        yl = [y*np.sin(angle[lidar.index(y)]) for y in lidar]
+        yl = [x*np.cos(angle[lidar.index(x)]) for x in lidar]
+        xl = [-y*np.sin(angle[lidar.index(y)]) for y in lidar]
 
         # take all the "inf" off
         xl = [10.0 if value == 'inf' else value for value in xl]
@@ -190,7 +190,7 @@ class RTinference:
             plt.plot(xl,yl, '.', markersize=POINT_WIDTH, color='black')
             plt.axis('off')
             plt.xlim([-1.5, 1.5])
-            plt.ylim([0, 2.2])
+            plt.ylim([0.0, 3.0])
             plt.grid(False)
             
             plt.gca().spines['top'].set_visible(False)

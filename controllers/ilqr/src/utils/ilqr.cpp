@@ -181,7 +181,7 @@ void iLQR::fit(MatrixXd us)
                 _xs = _xs_new;
                 _us = _us_new;
 
-                regu *= 0.75;
+                regu *= 0.7;
 
                 break;
             }

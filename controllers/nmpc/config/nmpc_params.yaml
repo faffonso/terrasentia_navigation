@@ -10,11 +10,11 @@ controller/NMPC:
   Q_theta:  1.0 # Theta cost
 
   R_v:      0.01 # Linear speed cost
-  R_omega:  0.01 # Angular speed cost
+  R_omega:  0.5 # Angular speed cost
 
   # Boundary Action Control
   v_max:      0.8 # [m/s]
-  omega_max:  1.5 # [rad/s]
+  omega_max:  1.2 # [rad/s]
 
 ## Odometry Params
 odom:
