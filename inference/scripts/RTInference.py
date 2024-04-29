@@ -70,6 +70,7 @@ class RTinference:
 
         self.pub = rospy.Publisher('/lidar_plot', Image, queue_size=10)
         self.bridge = CvBridge()
+        self.data = LaserScan()
 
         # Set up the ROS service server
         rospy.Service('RTInference', RTInference, self.rt_inference_service)
@@ -88,8 +89,23 @@ class RTinference:
     def lidar_callback(self, data):
         self.data = data
 
-    def run(self):
+    def apply_noise(self, mean=0, std_dev=0.85):
+        # Convert LaserScan object to numpy array
+        ranges = np.array(self.data.ranges)
+        # Generate noise
+        noise = np.random.normal(mean, std_dev, size=ranges.shape)
+        # Add noise to the ranges
+        noisy_ranges = ranges + noise
+        # Update LaserScan object with noisy ranges
+
+        self.data.ranges = noisy_ranges.tolist()
+
+    def run(self, noise=False):
         if self.data is not None: # check for consistency
+            # Gaussian noise
+            if (noise == True):
+                self.apply_noise()
+
             self.generate_image(self.data)
             self.image, raw_image = self.get_image()
 

@@ -1,7 +1,7 @@
 import rosbag
 import matplotlib.pyplot as plt
-from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import numpy as np
+from PIL import Image
 
 def extract_data(bag):
     timestamps = []
@@ -32,89 +32,118 @@ def extract_data(bag):
         elif topic == '/terrasentia/goal':
             x_ref.append(msg.pose.position.x)
             y_ref.append(msg.pose.position.y)
-            orientation_q = msg.pose.orientation
-            _, _, heading = euler_from_quaternion([orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w])
-            heading_ref.append(heading)
 
-    return xs, ys, v, omega, ilqr_time, x_ref, y_ref, heading_ref
+    return xs, ys, v, omega, ilqr_time, x_ref, y_ref
 
-def plot_trajectory(trajectory_xs, trajectory_ys, x_ref, y_ref, heading_ref):
-    plt.figure(figsize=(8, 6))
-    plt.plot(trajectory_xs, trajectory_ys, label='Trajectory')
-    plt.scatter(x_ref, y_ref, color='red', marker='o', label='Reference Point')  # Change marker to 'o' for a circle
+def plot_trajectory(trajectory_xs, trajectory_ys, x_ref, y_ref, heading_ref, background_image_path, opacity=1.0):
+    plt.figure(figsize=(16, 4.57))
 
-    # Plot arrows for goal orientation
-    for x, y, heading in zip(x_ref, y_ref, heading_ref):
-        arrow_length = 0.8  # Adjust arrow length as needed
-        dx = arrow_length * np.cos(heading)
-        dy = arrow_length * np.sin(heading)
+    # Load the background image
+    background_image = Image.open(background_image_path)
 
-        plt.quiver(x, y, dx, dy, angles='xy', scale_units='xy', scale=1, color='blue')
+    # Mirror the background image horizontally
+    mirrored_image = background_image.transpose(Image.FLIP_LEFT_RIGHT)
 
-    #max_val = max(max(trajectory_xs), max(trajectory_ys), max(x_ref), max(y_ref))
+    # Display the background image
+    plt.imshow(mirrored_image, extent=[-7.5, 7.5, -4.21, 4.21], aspect='auto', alpha=opacity)
+
+    plt.plot(trajectory_ys, trajectory_xs, label='Trajectory', linewidth=2.0)
+    plt.scatter(y_ref, x_ref, color='red', marker='o', label='Waypoints', s=25)
+
+    plt.xlabel('$Y_g$ [m]', fontsize=17)
+    plt.ylabel('$X_g$ [m]', fontsize=17)
+    plt.xlim(-7.5, 7.5)
+    plt.ylim(-2.0, 1.5)
+    plt.xticks(fontsize=17)
+    plt.yticks(fontsize=17)
+    plt.legend(fontsize=15)
+    plt.grid(True)
+    plt.show()
+
+def plot_controls(control_v1, control_omega1, ilqr_time1, mean1,
+                  control_v2, control_omega2, ilqr_time2, mean2):
+    fig, axes = plt.subplots(2, 2, figsize=(13, 4), sharex='col')
+
+    axes[0, 0].step(range(len(control_v1)), control_v1, c='C0', linewidth=1.25)
+    axes[0, 0].axhline(0, color='k', linestyle='-.', linewidth=1.75)
+    axes[0, 0].set_ylabel('$v$ [m/s]', fontsize=14)
+    axes[0, 0].grid(True)
+    axes[0, 0].set_ylim(-0.05, 0.85)
+    axes[0, 0].set_xlim(0, len(control_v1))
+    axes[0, 0].set_title('iLQR', fontsize=14)
+    axes[0, 0].tick_params(axis='y', labelsize=12)
+    axes[0, 0].tick_params(axis='x', labelsize=12)
+
+    axes[0, 1].step(range(len(control_v2)), control_v2, c='C0', linewidth=1.25)
+    axes[0, 1].axhline(0, color='k', linestyle='-.', linewidth=1.75)
+    axes[0, 1].grid(True)
+    axes[0, 1].set_ylim(-0.05, 0.85)
+    axes[0, 1].set_xlim(0, len(control_v2))
+    axes[0, 1].set_title('IPOPT', fontsize=14) 
+    axes[0, 1].tick_params(axis='y', labelsize=12)
+    axes[0, 1].tick_params(axis='x', labelsize=12)
+
+    axes[1, 0].step(range(len(control_omega1)), control_omega1, color='orange', linewidth=1.25)
+    axes[1, 0].axhline(0, color='k', linestyle='-.', linewidth=1.75)
+    axes[1, 0].set_ylabel('$\omega$ [rad/s]', fontsize=14)
+    axes[1, 0].grid(True)
+    axes[1, 0].set_ylim(-0.75, 0.75)
+    axes[1, 0].set_xlim(0, len(control_omega1))
+    axes[1, 0].set_xlabel('Time Step', fontsize=14)
+    axes[1, 0].tick_params(axis='y', labelsize=12)
+    axes[1, 0].tick_params(axis='x', labelsize=12)
+
+    axes[1, 1].step(range(len(control_omega2)), control_omega2, color='orange', linewidth=1.25)
+    axes[1, 1].axhline(0, color='k', linestyle='-.', linewidth=1.75)
+    axes[1, 1].grid(True)
+    axes[1, 1].set_ylim(-0.75, 0.75)
+    axes[1, 1].set_xlim(0, len(control_omega2))
+    axes[1, 1].set_xlabel('Time Step', fontsize=14)
+    axes[1, 1].tick_params(axis='y', labelsize=12)
+    axes[1, 1].tick_params(axis='x', labelsize=12)
+
+    # Hide yticks for subplots in the second row
+    axes[0, 1].tick_params(axis='y', which='both', left=False, labelleft=False)
+    axes[1, 1].tick_params(axis='y', which='both', left=False, labelleft=False)
+
+    fig.suptitle('Control Signals', fontsize=16, y=1.05)
+    plt.tight_layout()
+    plt.show()
+
+    plt.figure(figsize=(7, 5))
+    plt.plot(ilqr_time1, label='iLQR', c='C0', zorder=1, linewidth=1.25)
+    plt.plot(ilqr_time2, label='IPOPT', c='orange', zorder=1, linewidth=1.25)
+    plt.axhline(mean1, linestyle='-.', linewidth=1.75, label="Average Solver Time", zorder=3, c='k')
+    plt.axhline(mean2, linestyle='-.', linewidth=1.75, zorder=3, c='k')
+    plt.xlabel('Time Step', fontsize=14)
+    plt.ylabel('Solver Time [s]', fontsize=14)
+    plt.legend(fontsize=12, loc='upper right')
+    plt.grid(True)
+    plt.xlim(0, max(len(ilqr_time1), len(ilqr_time2))-1)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.tight_layout()
+    plt.show()
+
+
     
-    plt.xlim(-2.0, 2.0)
-    plt.ylim(-7.0, 7.0)
-
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.title('Robot Trajectory')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-
-
-def plot_control(control_v, control_omega):
-    fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)  # Increased height to accommodate larger labels
-
-    axes[0].step(range(len(control_v)), control_v, where='mid')
-    axes[0].axhline(0, color='k', linestyle='--', linewidth=2)
-    axes[0].set_ylabel('$v$ [m/s]', fontsize=12)  # Adjust font size as needed
-    axes[0].grid(True)
-
-    axes[1].step(range(len(control_omega)), control_omega, where='mid')
-    axes[1].axhline(0, color='k', linestyle='--', linewidth=2)
-    axes[1].set_ylabel('$\omega$ [rad/s]', fontsize=12)  # Adjust font size as needed
-    axes[1].grid(True)
-
-    plt.xlabel('Step $k$', fontsize=12)  # Adjust font size as needed
-    plt.xlim(0, len(control_v))
-
-    fig.align_ylabels(axes)  # Align y-axis labels vertically
-
-    plt.show()
-
-def plot_ilqr_time(ilqr_time):
-    plt.figure(figsize=(10, 4))
-    plt.plot(ilqr_time, label='ilqr_time')
-    plt.xlabel('Time Step')
-    plt.ylabel('Time (s)')
-    plt.title('ILQR Time')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
 if __name__ == "__main__":
-    bag_path = '../bags/jint/04-09-ilqr-curved-16-02.bag'
-    # bag_path = '../../nmpc/bags/04-09-curved-nmpc-13-25.bag'
-    bag = rosbag.Bag(bag_path)
-    trajectory_xs, trajectory_ys, control_v, control_omega, ilqr_time, x_ref, y_ref, heading_ref = extract_data(bag)
+    bag_path1 = '../bags/04-09-ilqr-curved-16-02.bag'
+    bag_path2 = '../bags/04-09-nmpc-curved-16-10.bag'
+    bag1 = rosbag.Bag(bag_path1)
+    bag2 = rosbag.Bag(bag_path2)
+
+    trajectory_xs1, trajectory_ys1, control_v1, control_omega1, ilqr_time1, x_ref1, y_ref1 = extract_data(bag1)
+    trajectory_xs2, trajectory_ys2, control_v2, control_omega2, ilqr_time2, x_ref2, y_ref2 = extract_data(bag2)
+    background_image_path = 'maps/jint_noise_map.jpg'
+
+    # plot_trajectory(trajectory_xs1, trajectory_ys1, x_ref1, y_ref1, [], background_image_path)
     
-    plot_trajectory(trajectory_xs, trajectory_ys, x_ref, y_ref, heading_ref)
-    plot_control(control_v, control_omega)
-    plot_ilqr_time(ilqr_time)
+    plot_controls(control_v1, control_omega1, ilqr_time1, np.mean(ilqr_time1),
+                  control_v2, control_omega2, ilqr_time2, np.mean(ilqr_time2))
 
-    tot = 0
-    ind = 0
-    tot2 = 0
-    for t in ilqr_time:
-        #tot += 1/t
-        tot2 += t
-        ind += 1
+    print(f'Av. solve time: iLQR {np.mean(ilqr_time1)}, IPOPt {np.mean(ilqr_time2)}')
+    print(f'Av. solve time: iLQR {(len(ilqr_time1)-1) * 0.1}, IPOPt {(len(ilqr_time2)-1) * 0.1}')
 
-    print(tot2/ind)
-    #print(ind/tot)
-
-    bag.close()
+    bag1.close()
+    bag2.close()
